@@ -22,3 +22,6 @@ build/
 # Logs
 logs/
 *.log
+
+# Private design notes (push manually when ready)
+docs/DECISIONS.md

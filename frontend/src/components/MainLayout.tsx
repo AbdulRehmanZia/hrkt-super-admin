@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
-import { Layout, Menu, Typography } from 'antd';
+import { Layout, Menu, Typography, Avatar, Space } from 'antd';
 import {
   DashboardOutlined,
   BankOutlined,
   LogoutOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const { Header, Content, Sider } = Layout;
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   const menuItems = [
     {
@@ -27,11 +30,20 @@ export const MainLayout: React.FC = () => {
       label: 'Facilities',
     },
     {
-      key: '/login',
+      key: '__logout__',
       icon: <LogoutOutlined />,
       label: 'Logout',
     },
   ];
+
+  const handleMenuClick = ({ key }: { key: string }) => {
+    if (key === '__logout__') {
+      logout();
+      navigate('/login', { replace: true });
+    } else {
+      navigate(key);
+    }
+  };
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -56,11 +68,25 @@ export const MainLayout: React.FC = () => {
           selectedKeys={[location.pathname]}
           mode="inline"
           items={menuItems}
-          onClick={({ key }) => navigate(key)}
+          onClick={handleMenuClick}
         />
       </Sider>
       <Layout>
-        <Header style={{ padding: '0 24px', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }} />
+        <Header
+          style={{
+            padding: '0 24px',
+            background: '#fff',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <Space>
+            <Avatar icon={<UserOutlined />} />
+            {!collapsed && <Text strong>{user?.name}</Text>}
+          </Space>
+        </Header>
         <Content style={{ margin: '24px 16px', padding: 24, background: '#fff', borderRadius: 8 }}>
           <Outlet />
         </Content>
