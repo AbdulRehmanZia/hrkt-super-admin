@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { DatabaseSchemasModule } from './schemas/database-schemas.module';
 
 @Module({
   imports: [
@@ -14,9 +15,11 @@ import { AppService } from './app.service';
       }),
       inject: [ConfigService],
     }),
+    DatabaseSchemasModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
+
 
