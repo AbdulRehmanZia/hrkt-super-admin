@@ -25,3 +25,4 @@ logs/
 
 # Private design notes (push manually when ready)
 docs/DECISIONS.md
+docs/PLAN.md
