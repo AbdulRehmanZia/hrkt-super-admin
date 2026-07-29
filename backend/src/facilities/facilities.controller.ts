@@ -12,12 +12,14 @@ export class FacilitiesController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: string,
+    @Query('subscriptionStatus') subscriptionStatus?: string,
     @Query('search') search?: string,
   ) {
     return this.facilitiesService.findAll({
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 10,
       status,
+      subscriptionStatus,
       search,
     });
   }

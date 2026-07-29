@@ -13,13 +13,14 @@ export class FacilitiesService {
     page?: number;
     limit?: number;
     status?: string;
+    subscriptionStatus?: string;
     search?: string;
   }) {
     const page = query.page || 1;
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
-    // Build match stage for filters
+    // Step 1: Match on facility-level fields only (status + search)
     const matchStage: any = {};
     if (query.status) {
       matchStage.status = query.status;
@@ -33,13 +34,12 @@ export class FacilitiesService {
 
     const pipeline: any[] = [];
 
-    // Only add $match if there are filters
     if (Object.keys(matchStage).length > 0) {
       pipeline.push({ $match: matchStage });
     }
 
     pipeline.push(
-      // Lookup courts count for each facility
+      // Lookup courts count
       {
         $lookup: {
           from: 'courts',
@@ -48,7 +48,7 @@ export class FacilitiesService {
           as: 'courts',
         },
       },
-      // Lookup active customers count
+      // Lookup active customers only
       {
         $lookup: {
           from: 'customers',
@@ -67,7 +67,7 @@ export class FacilitiesService {
           as: 'subscription',
         },
       },
-      // Lookup total revenue from bookings (sum of amountPaid)
+      // Lookup bookings for revenue, total count, and last booking date
       {
         $lookup: {
           from: 'bookings',
@@ -76,7 +76,7 @@ export class FacilitiesService {
           as: 'bookings',
         },
       },
-      // Shape the output — all counting happens in the DB, not in JS
+      // Shape the output — all computation inside MongoDB, not JS
       {
         $project: {
           name: 1,
@@ -93,19 +93,32 @@ export class FacilitiesService {
             $ifNull: [{ $arrayElemAt: ['$subscription.plan', 0] }, 'none'],
           },
           totalRevenue: { $sum: '$bookings.amountPaid' },
-          totalBookings: { $size: '$bookings' },
+          // lifetimeBookings = total count of all bookings (not just this month)
+          lifetimeBookings: { $size: '$bookings' },
+          // lastBookingDate = the most recent startTime across all bookings
+          // $max returns null if array is empty — frontend shows "Never" for null
+          lastBookingDate: { $max: '$bookings.startTime' },
         },
       },
-      // Sort by name
-      { $sort: { name: 1 } },
     );
 
-    // Get total count before pagination (for frontend pagination controls)
+    // Step 2: If subscriptionStatus filter is set, apply it AFTER $lookup
+    // (subscription is a joined field — can't filter on it before $lookup)
+    if (query.subscriptionStatus) {
+      pipeline.push({
+        $match: { subscriptionStatus: query.subscriptionStatus },
+      });
+    }
+
+    // Default sort: name ascending
+    pipeline.push({ $sort: { name: 1 } });
+
+    // Get total count before applying pagination
     const countPipeline = [...pipeline, { $count: 'total' }];
     const countResult = await this.facilityModel.aggregate(countPipeline).exec();
     const total = countResult.length > 0 ? countResult[0].total : 0;
 
-    // Apply pagination
+    // Apply pagination at the end
     pipeline.push({ $skip: skip }, { $limit: limit });
 
     const facilities = await this.facilityModel.aggregate(pipeline).exec();

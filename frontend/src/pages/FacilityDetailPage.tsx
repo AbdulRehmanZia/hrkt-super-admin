@@ -1,12 +1,11 @@
 import React from 'react';
-import { Typography, Card, Button, Tag, Result } from 'antd';
+import { Typography, Card, Button, Result } from 'antd';
 import { ArrowLeftOutlined, LoadingOutlined } from '@ant-design/icons';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const { Title } = Typography;
 
 export const FacilityDetailPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   return (
@@ -25,7 +24,7 @@ export const FacilityDetailPage: React.FC = () => {
         <Result
           icon={<LoadingOutlined style={{ fontSize: 48, color: '#1677ff' }} />}
           title="Detail view coming soon"
-          subTitle="Full facility analytics, booking history, customers, and controls will be wired up in the next step."
+          subTitle="Full facility analytics, booking history, customers, and controls will be wired up in Step 8."
           extra={
             <Button type="primary" onClick={() => navigate('/facilities')}>
               Back to List
