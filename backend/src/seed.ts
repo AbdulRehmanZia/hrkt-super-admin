@@ -157,13 +157,16 @@ async function seed() {
     // Create Customers for Facility (~35 customers per facility = 350 total)
     const customerIds: mongoose.Types.ObjectId[] = [];
     for (let cust = 1; cust <= 35; cust++) {
+      const customerDaysAgo = Math.floor(Math.random() * 160);
+      const custCreatedAt = new Date(now.getTime() - customerDaysAgo * 24 * 60 * 60 * 1000);
+
       const custRes = await db.collection('customers').insertOne({
         facilityId,
         name: `Customer ${idx + 1}-${cust}`,
         phone: `+92-300-${1000000 + idx * 1000 + cust}`,
         email: `cust${idx + 1}_${cust}@gmail.com`,
         status: CustomerStatus.ACTIVE,
-        createdAt: new Date('2026-02-01T00:00:00Z'),
+        createdAt: custCreatedAt,
         updatedAt: new Date(),
       });
       customerIds.push(custRes.insertedId as any);
@@ -186,7 +189,12 @@ async function seed() {
 
       // Random date between Feb 1, 2026 and July 28, 2026
       const randomDaysAgo = Math.floor(Math.random() * 175);
-      const startTime = new Date(now.getTime() - randomDaysAgo * 24 * 60 * 60 * 1000);
+      const bookingDate = new Date(now.getTime() - randomDaysAgo * 24 * 60 * 60 * 1000);
+      const randomHour = 8 + Math.floor(Math.random() * 14); // Hours between 8:00 AM and 9:00 PM
+      const randomMinute = Math.random() < 0.5 ? 0 : 30; // :00 or :30 slot start
+      bookingDate.setHours(randomHour, randomMinute, 0, 0);
+
+      const startTime = bookingDate;
       const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hr booking
 
       // Vary rates: 2500 - 4500 PKR depending on court and index

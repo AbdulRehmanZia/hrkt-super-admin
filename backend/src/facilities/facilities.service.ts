@@ -1,6 +1,6 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 
 import * as bcrypt from 'bcrypt';
 import {
@@ -17,6 +17,19 @@ import {
   Invoice,
   InvoiceDocument,
   InvoiceStatus,
+  Court,
+  CourtDocument,
+  Customer,
+  CustomerDocument,
+  CustomerStatus,
+  Booking,
+  BookingDocument,
+  BookingStatus,
+  Discount,
+  DiscountDocument,
+  BookingRule,
+  BookingRuleDocument,
+  PaymentStatus,
 } from '../schemas';
 import { CreateFacilityDto } from './dto/create-facility.dto';
 import { PLAN_BASE_FEES } from '../config/billing.config';
@@ -29,6 +42,11 @@ export class FacilitiesService {
     @InjectModel(Subscription.name)
     private subscriptionModel: Model<SubscriptionDocument>,
     @InjectModel(Invoice.name) private invoiceModel: Model<InvoiceDocument>,
+    @InjectModel(Court.name) private courtModel: Model<CourtDocument>,
+    @InjectModel(Customer.name) private customerModel: Model<CustomerDocument>,
+    @InjectModel(Booking.name) private bookingModel: Model<BookingDocument>,
+    @InjectModel(Discount.name) private discountModel: Model<DiscountDocument>,
+    @InjectModel(BookingRule.name) private bookingRuleModel: Model<BookingRuleDocument>,
   ) {}
 
   async create(dto: CreateFacilityDto) {
@@ -94,8 +112,195 @@ export class FacilitiesService {
         id: adminUser._id.toString(),
         name: adminUser.name,
         email: adminUser.email,
-        tempPassword, // Returned once so Super Admin can copy/share it
+        tempPassword,
       },
+    };
+  }
+
+  async findOne(id: string) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException('Invalid facility ID');
+    }
+    const facilityId = new Types.ObjectId(id);
+
+    const facility = await this.facilityModel.findById(facilityId).exec();
+    if (!facility) {
+      throw new NotFoundException('Facility not found');
+    }
+
+    const courts = await this.courtModel.find({ facilityId }).exec();
+    const users = await this.userModel
+      .find({ facilityId }, 'name email role status createdAt')
+      .exec();
+    const subscription = await this.subscriptionModel.findOne({ facilityId }).exec();
+    const latestInvoice = await this.invoiceModel
+      .findOne({ facilityId })
+      .sort({ periodMonth: -1 })
+      .exec();
+    const bookingRules = await this.bookingRuleModel.find({ facilityId }).exec();
+    const discounts = await this.discountModel.find({ facilityId }).exec();
+
+    // Group Users by Role (view-only requirement)
+    const usersByRole = {
+      facility_admin: users.filter((u) => u.role === UserRole.FACILITY_ADMIN),
+      manager: users.filter((u) => u.role === UserRole.MANAGER),
+      staff: users.filter((u) => u.role === UserRole.STAFF),
+      coach: users.filter((u) => u.role === UserRole.COACH),
+    };
+
+    // Bookings breakdown by payment type (count AND revenue PKR — view-only requirement)
+    const paymentBreakdownRaw = await this.bookingModel
+      .aggregate([
+        { $match: { facilityId } },
+        {
+          $group: {
+            _id: '$paymentStatus',
+            count: { $sum: 1 },
+            revenue: { $sum: '$amountPaid' },
+          },
+        },
+      ])
+      .exec();
+
+    const paymentBreakdown = {
+      fully_paid: { count: 0, revenue: 0 },
+      partially_paid: { count: 0, revenue: 0 },
+      unpaid: { count: 0, revenue: 0 },
+    };
+
+    paymentBreakdownRaw.forEach((item) => {
+      if (item._id && paymentBreakdown.hasOwnProperty(item._id)) {
+        paymentBreakdown[item._id as keyof typeof paymentBreakdown] = {
+          count: item.count,
+          revenue: item.revenue,
+        };
+      }
+    });
+
+    // Per-facility aggregated stats
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const rev30dResult = await this.bookingModel
+      .aggregate([
+        { $match: { facilityId, startTime: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: null, total: { $sum: '$amountPaid' } } },
+      ])
+      .exec();
+
+    const totalRevResult = await this.bookingModel
+      .aggregate([
+        { $match: { facilityId } },
+        { $group: { _id: null, total: { $sum: '$amountPaid' } } },
+      ])
+      .exec();
+
+    const totalBookings = await this.bookingModel.countDocuments({ facilityId }).exec();
+    const cancelledBookings = await this.bookingModel
+      .countDocuments({ facilityId, status: BookingStatus.CANCELLED })
+      .exec();
+    const activeCustomers = await this.customerModel
+      .countDocuments({ facilityId, status: CustomerStatus.ACTIVE })
+      .exec();
+
+    const sourceResult = await this.bookingModel
+      .aggregate([
+        { $match: { facilityId } },
+        { $group: { _id: '$source', count: { $sum: 1 } } },
+      ])
+      .exec();
+
+    const sourceBreakdown = { web: 0, portal: 0, bot: 0 };
+    sourceResult.forEach((item) => {
+      if (item._id && sourceBreakdown.hasOwnProperty(item._id)) {
+        sourceBreakdown[item._id as keyof typeof sourceBreakdown] = item.count;
+      }
+    });
+
+    return {
+      facility,
+      courts,
+      usersByRole,
+      subscription,
+      latestInvoice,
+      bookingRules,
+      discounts,
+      paymentBreakdown,
+      stats: {
+        revenue30Days: rev30dResult.length > 0 ? rev30dResult[0].total : 0,
+        totalRevenueAllTime: totalRevResult.length > 0 ? totalRevResult[0].total : 0,
+        totalBookings,
+        cancelledBookings,
+        cancellationRate:
+          totalBookings > 0 ? Math.round((cancelledBookings / totalBookings) * 100) : 0,
+        activeCustomers,
+        sourceBreakdown,
+      },
+    };
+  }
+
+  async findBookings(
+    id: string,
+    query: { page?: number; limit?: number; paymentStatus?: string },
+  ) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException('Invalid facility ID');
+    }
+    const facilityId = new Types.ObjectId(id);
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const filter: any = { facilityId };
+    if (query.paymentStatus) {
+      filter.paymentStatus = query.paymentStatus;
+    }
+
+    const total = await this.bookingModel.countDocuments(filter).exec();
+    const bookings = await this.bookingModel
+      .find(filter)
+      .populate('courtId', 'name sport')
+      .populate('customerId', 'name phone email')
+      .sort({ startTime: -1 })
+      .skip(skip)
+      .limit(limit)
+      .exec();
+
+    return {
+      data: bookings,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async findCustomers(id: string, query: { page?: number; limit?: number; search?: string }) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException('Invalid facility ID');
+    }
+    const facilityId = new Types.ObjectId(id);
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const filter: any = { facilityId };
+    if (query.search) {
+      filter.$or = [
+        { name: { $regex: query.search, $options: 'i' } },
+        { email: { $regex: query.search, $options: 'i' } },
+        { phone: { $regex: query.search, $options: 'i' } },
+      ];
+    }
+
+    const total = await this.customerModel.countDocuments(filter).exec();
+    const customers = await this.customerModel
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .exec();
+
+    return {
+      data: customers,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
   }
 
@@ -110,7 +315,6 @@ export class FacilitiesService {
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
-    // Step 1: Match on facility-level fields only (status + search)
     const matchStage: any = {};
     if (query.status) {
       matchStage.status = query.status;
@@ -129,7 +333,6 @@ export class FacilitiesService {
     }
 
     pipeline.push(
-      // Lookup courts count
       {
         $lookup: {
           from: 'courts',
@@ -138,7 +341,6 @@ export class FacilitiesService {
           as: 'courts',
         },
       },
-      // Lookup active customers only
       {
         $lookup: {
           from: 'customers',
@@ -148,7 +350,6 @@ export class FacilitiesService {
           as: 'customers',
         },
       },
-      // Lookup subscription
       {
         $lookup: {
           from: 'subscriptions',
@@ -157,7 +358,6 @@ export class FacilitiesService {
           as: 'subscription',
         },
       },
-      // Lookup bookings for revenue, total count, and last booking date
       {
         $lookup: {
           from: 'bookings',
@@ -166,7 +366,6 @@ export class FacilitiesService {
           as: 'bookings',
         },
       },
-      // Shape the output — all computation inside MongoDB, not JS
       {
         $project: {
           name: 1,
@@ -189,22 +388,18 @@ export class FacilitiesService {
       },
     );
 
-    // Step 2: If subscriptionStatus filter is set, apply it AFTER $lookup
     if (query.subscriptionStatus) {
       pipeline.push({
         $match: { subscriptionStatus: query.subscriptionStatus },
       });
     }
 
-    // Default sort: name ascending
     pipeline.push({ $sort: { name: 1 } });
 
-    // Get total count before applying pagination
     const countPipeline = [...pipeline, { $count: 'total' }];
     const countResult = await this.facilityModel.aggregate(countPipeline).exec();
     const total = countResult.length > 0 ? countResult[0].total : 0;
 
-    // Apply pagination at the end
     pipeline.push({ $skip: skip }, { $limit: limit });
 
     const facilities = await this.facilityModel.aggregate(pipeline).exec();
