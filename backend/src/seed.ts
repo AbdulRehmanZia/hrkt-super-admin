@@ -146,7 +146,12 @@ async function seed() {
     }
 
     // 6. Create Subscription for Facility
-    const subStatus = cfg.status === FacilityStatus.SUSPENDED ? SubscriptionStatus.PAST_DUE : SubscriptionStatus.ACTIVE;
+    const subStatus: SubscriptionStatus =
+      cfg.status === FacilityStatus.SUSPENDED
+        ? SubscriptionStatus.PAST_DUE
+        : idx === 1
+        ? SubscriptionStatus.TRIAL
+        : SubscriptionStatus.ACTIVE;
     const monthlyBaseFee = PLAN_BASE_FEES[cfg.plan] || PLAN_BASE_FEES['pro'];
 
     await db.collection('subscriptions').insertOne({
@@ -260,18 +265,32 @@ async function seed() {
     }
 
     // 9. Create Historical Invoices (6 months) with EXACT formula: Base Fee + Court Usage + Booking Usage
+    // Staggered due dates per facility billing cycle (e.g. 5th, 10th, 15th, 20th, 25th, 28th...)
+    const dueDayNum = ((idx * 4) % 24) + 5;
+    const dueDayStr = String(dueDayNum).padStart(2, '0');
+
     for (const m of months) {
       const isPast = m < '2026-07';
-      const invStatus = isPast ? InvoiceStatus.PAID : cfg.status === FacilityStatus.SUSPENDED ? InvoiceStatus.OVERDUE : InvoiceStatus.DUE;
+      const isTrial = subStatus === SubscriptionStatus.TRIAL;
+
+      const dueDate = new Date(`${m}-${dueDayStr}T00:00:00Z`);
       const bCount = monthlyBookingCounts[m] || 0;
-      const amountDue = monthlyBaseFee + numCourts * BILLING_RATES.PER_COURT_FEE + bCount * BILLING_RATES.PER_BOOKING_FEE;
+      const calculatedFee = monthlyBaseFee + numCourts * BILLING_RATES.PER_COURT_FEE + bCount * BILLING_RATES.PER_BOOKING_FEE;
+      const amountDue = isTrial ? 0 : calculatedFee;
+
+      const isOverdueByDate = dueDate < now;
+      const invStatus = isPast || isTrial
+        ? InvoiceStatus.PAID
+        : isOverdueByDate
+        ? InvoiceStatus.OVERDUE
+        : InvoiceStatus.DUE;
 
       await db.collection('invoices').insertOne({
         facilityId,
         periodMonth: m,
         amountDue,
         amountPaid: invStatus === InvoiceStatus.PAID ? amountDue : 0,
-        dueDate: new Date(`${m}-28T00:00:00Z`),
+        dueDate,
         status: invStatus,
         lastReminderSentAt: invStatus === InvoiceStatus.OVERDUE ? new Date('2026-07-25T10:00:00Z') : null,
         createdAt: new Date(),

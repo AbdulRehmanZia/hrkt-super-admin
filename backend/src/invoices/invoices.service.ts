@@ -53,6 +53,8 @@ export class InvoicesService {
       matchStage.status = query.status;
     }
 
+    const now = new Date();
+
     const pipeline: any[] = [
       {
         $lookup: {
@@ -63,6 +65,23 @@ export class InvoicesService {
         },
       },
       { $unwind: '$facility' },
+      {
+        $addFields: {
+          status: {
+            $cond: {
+              if: { $gte: ['$amountPaid', '$amountDue'] },
+              then: 'paid',
+              else: {
+                $cond: {
+                  if: { $lt: ['$dueDate', now] },
+                  then: 'overdue',
+                  else: 'due',
+                },
+              },
+            },
+          },
+        },
+      },
     ];
 
     if (query.search) {
@@ -91,11 +110,28 @@ export class InvoicesService {
 
     const invoices = await this.invoiceModel.aggregate(pipeline).exec();
 
-    // Summary totals for platform billing header
+    // Summary totals for platform billing header dynamically computed
     const statsResult = await this.invoiceModel.aggregate([
       {
+        $addFields: {
+          computedStatus: {
+            $cond: {
+              if: { $gte: ['$amountPaid', '$amountDue'] },
+              then: 'paid',
+              else: {
+                $cond: {
+                  if: { $lt: ['$dueDate', now] },
+                  then: 'overdue',
+                  else: 'due',
+                },
+              },
+            },
+          },
+        },
+      },
+      {
         $group: {
-          _id: '$status',
+          _id: '$computedStatus',
           count: { $sum: 1 },
           totalAmountDue: { $sum: '$amountDue' },
           totalAmountPaid: { $sum: '$amountPaid' },
