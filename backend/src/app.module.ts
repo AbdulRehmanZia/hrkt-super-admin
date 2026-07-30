@@ -7,14 +7,17 @@ import { DatabaseSchemasModule } from './schemas/database-schemas.module';
 import { AuthModule } from './auth/auth.module';
 import { FacilitiesModule } from './facilities/facilities.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { InvoicesModule } from './invoices/invoices.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGO_URI') || 'mongodb://localhost:27017/hrkt-admin',
+      useFactory: async (configService: ConfigService) => ({
+        uri:
+          configService.get<string>('MONGODB_URI') ||
+          'mongodb://localhost:27017/hrkt-admin',
       }),
       inject: [ConfigService],
     }),
@@ -22,10 +25,9 @@ import { DashboardModule } from './dashboard/dashboard.module';
     AuthModule,
     FacilitiesModule,
     DashboardModule,
+    InvoicesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
-
-

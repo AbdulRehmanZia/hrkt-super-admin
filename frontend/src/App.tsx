@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { FacilitiesListPage } from './pages/FacilitiesListPage';
 import { FacilityDetailPage } from './pages/FacilityDetailPage';
+import { InvoicesPage } from './pages/InvoicesPage';
 
 export const App: React.FC = () => {
   return (
@@ -28,6 +29,7 @@ export const App: React.FC = () => {
             <Route index element={<DashboardPage />} />
             <Route path="facilities" element={<FacilitiesListPage />} />
             <Route path="facilities/:id" element={<FacilityDetailPage />} />
+            <Route path="invoices" element={<InvoicesPage />} />
           </Route>
 
           {/* Catch-all redirect */}

@@ -3,6 +3,7 @@ import { Layout, Menu, Typography, Avatar, Space } from 'antd';
 import {
   DashboardOutlined,
   BankOutlined,
+  DollarOutlined,
   LogoutOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -28,6 +29,11 @@ export const MainLayout: React.FC = () => {
       key: '/facilities',
       icon: <BankOutlined />,
       label: 'Facilities',
+    },
+    {
+      key: '/invoices',
+      icon: <DollarOutlined />,
+      label: 'Billing & Invoices',
     },
     {
       key: '__logout__',
