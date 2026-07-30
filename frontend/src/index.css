@@ -6,6 +6,21 @@
   padding: 0;
 }
 
+:root {
+  --primary: #00C27A;
+  --primary-hover: #00A86B;
+  --primary-light: #E8FFF5;
+  --bg-page: #F1F5F9;
+  --surface: #FFFFFF;
+  --sidebar-bg: #111827;
+  --text-primary: #111827;
+  --text-secondary: #64748B;
+  --border-color: #E5E7EB;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+}
+
 html,
 body,
 #root {
@@ -15,8 +30,179 @@ body,
 }
 
 body {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #f0f2f5;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+}
+
+/* Sider & Sidebar Fixed Layout (#111827 Dark Charcoal) */
+.ant-layout-sider {
+  background-color: #111827 !important;
+  border-right: 1px solid #1F2937 !important;
+}
+
+.ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Sidebar Collapse Trigger Button Override */
+.ant-layout-sider-trigger {
+  background-color: #111827 !important;
+  color: #9CA3AF !important;
+  border-top: 1px solid #1F2937 !important;
+  transition: all 0.2s ease !important;
+}
+
+.ant-layout-sider-trigger:hover {
+  background-color: #1F2937 !important;
+  color: #FFFFFF !important;
+}
+
+/* Sidebar Active Navigation (#1F2937 background + 3px solid #00C27A left border + White Text) */
+.hrkt-sidebar-menu.ant-menu-dark,
+.hrkt-sidebar-menu {
+  background-color: transparent !important;
+  border-right: 0 !important;
+}
+
+.hrkt-sidebar-menu .ant-menu-item {
+  margin: 6px 12px !important;
+  width: calc(100% - 24px) !important;
+  border-radius: 8px !important;
+  transition: all 0.15s ease !important;
+  color: #9CA3AF !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  position: relative !important;
+}
+
+.hrkt-sidebar-menu .ant-menu-item:hover {
+  color: #FFFFFF !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.hrkt-sidebar-menu .ant-menu-item-selected {
+  background-color: #1F2937 !important;
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+}
+
+.hrkt-sidebar-menu .ant-menu-item-selected .ant-menu-item-icon {
+  color: #00C27A !important;
+}
+
+/* 3px solid #00C27A left indicator bar */
+.hrkt-sidebar-menu .ant-menu-item-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background-color: #00C27A;
+  border-radius: 0 4px 4px 0;
+}
+
+/* Layered Enterprise Cards (14px Radius, Soft Border #E5E7EB, Very Subtle Shadow) */
+.hrkt-card {
+  background: #FFFFFF !important;
+  border-radius: 14px !important;
+  border: 1px solid #E5E7EB !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04) !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.hrkt-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Modern Ant Design Table Override (Neutral Hover #F8FAFC) */
+.ant-table-wrapper .ant-table {
+  border-radius: 14px !important;
+  overflow: hidden;
+  background: #FFFFFF !important;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th {
+  background: #F8FAFC !important;
+  color: #64748B !important;
+  font-weight: 600 !important;
+  font-size: 11px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid #E5E7EB !important;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #F1F5F9 !important;
+  padding: 14px 16px !important;
+  font-size: 13px !important;
+  color: #111827 !important;
+  transition: background 0.15s ease;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr:hover > td {
+  background: #F8FAFC !important;
+}
+
+/* Status Pill Badges (Smaller & More Elegant 11px) */
+.hrkt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.2px;
+}
+
+.hrkt-badge-green {
+  background-color: #DCFCE7;
+  color: #15803D;
+}
+
+.hrkt-badge-blue {
+  background-color: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.hrkt-badge-orange {
+  background-color: #FEF3C7;
+  color: #B45309;
+}
+
+.hrkt-badge-red {
+  background-color: #FEE2E2;
+  color: #B91C1C;
+}
+
+.hrkt-badge-gray {
+  background-color: #F3F4F6;
+  color: #4B5563;
+}
+
+/* Input & Select Darker Placeholder Override */
+::placeholder,
+.ant-input::placeholder {
+  color: #64748B !important;
+  opacity: 1 !important;
+}
+
+.ant-select .ant-select-selection-placeholder,
+.ant-select-selection-placeholder {
+  color: #64748B !important;
+  opacity: 1 !important;
+}
+
+.ant-select .ant-select-arrow {
+  color: #64748B !important;
 }
