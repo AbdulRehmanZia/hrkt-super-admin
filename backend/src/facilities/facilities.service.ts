@@ -38,6 +38,7 @@ import {
   AuditLogDocument,
 } from '../schemas';
 import { CreateFacilityDto } from './dto/create-facility.dto';
+import { UpdateFacilityDto } from './dto/update-facility.dto';
 import { UpdateCourtLimitDto } from './dto/update-court-limit.dto';
 import { UpdateAdminCredentialsDto } from './dto/update-admin-credentials.dto';
 import { UpdateFacilityStatusDto } from './dto/update-facility-status.dto';
@@ -251,6 +252,44 @@ export class FacilitiesService {
     };
   }
 
+  private async validateCourtLimit(facilityId: Types.ObjectId, newLimit: number): Promise<number> {
+    const activeCourtsCount = await this.courtModel.countDocuments({ facilityId }).exec();
+    if (newLimit < activeCourtsCount) {
+      throw new BadRequestException(
+        `Cannot set court limit to ${newLimit} because facility currently has ${activeCourtsCount} active courts configured`,
+      );
+    }
+    return activeCourtsCount;
+  }
+
+  // General Facility Edit (Spec Section 4.3): Name, City, Court Limit
+  async updateFacility(id: string, dto: UpdateFacilityDto, superAdminEmail: string) {
+    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('Invalid facility ID');
+    const facilityId = new Types.ObjectId(id);
+
+    const facility = await this.facilityModel.findById(facilityId).exec();
+    if (!facility) throw new NotFoundException('Facility not found');
+
+    if (dto.courtLimit !== undefined) {
+      await this.validateCourtLimit(facilityId, dto.courtLimit);
+      facility.courtLimit = dto.courtLimit;
+    }
+
+    if (dto.name) facility.name = dto.name;
+    if (dto.city) facility.city = dto.city;
+
+    await facility.save();
+
+    await this.auditLogModel.create({
+      facilityId,
+      performedBy: superAdminEmail,
+      action: 'FACILITY_INFO_UPDATE',
+      details: `Updated facility details (Name: "${facility.name}", City: "${facility.city}", Court Limit: ${facility.courtLimit})`,
+    });
+
+    return facility;
+  }
+
   // Control Action 1: Court Limit Change with Validation
   async updateCourtLimit(id: string, dto: UpdateCourtLimitDto, superAdminEmail: string) {
     if (!Types.ObjectId.isValid(id)) throw new NotFoundException('Invalid facility ID');
@@ -259,13 +298,7 @@ export class FacilitiesService {
     const facility = await this.facilityModel.findById(facilityId).exec();
     if (!facility) throw new NotFoundException('Facility not found');
 
-    const activeCourtsCount = await this.courtModel.countDocuments({ facilityId }).exec();
-
-    if (dto.courtLimit < activeCourtsCount) {
-      throw new BadRequestException(
-        `Cannot set court limit to ${dto.courtLimit} because facility already has ${activeCourtsCount} courts configured`,
-      );
-    }
+    await this.validateCourtLimit(facilityId, dto.courtLimit);
 
     const previousLimit = facility.courtLimit;
     facility.courtLimit = dto.courtLimit;
