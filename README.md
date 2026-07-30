@@ -43,5 +43,7 @@ All facility-owned entities (`User`, `Court`, `Customer`, `Booking`, `Discount`,
 - **Currency**: All monetary values (`totalRevenue`, `monthlyBaseFee`, `amountDue`, `amountPaid`) are handled in **PKR (Pakistani Rupees)**, catering to Karachi/Pakistan-based sports facilities.
 - **Active Customer Metric**: Defined explicitly as `customer.status === 'active'`. Inactive or archived customer profiles are excluded from tenant metrics and dashboard aggregation queries.
 - **Automatic 401 Unauthorized Handling**: If an API request returns a `401 Unauthorized` status (due to token expiration, secret key rotation, or database re-seeding), the central API wrapper (`lib/api.ts`) automatically clears stale session tokens from `localStorage` and triggers a clean redirect to `/login` to prevent silent UI deadlocks.
+- **Platform Dashboard Metrics Aggregation**: All dashboard KPIs, 6-month revenue trends, booking channel distribution, and spec-critical booking-rule adoption metrics are computed inside MongoDB aggregation pipelines (`$group`, `$count`, `$cond`) — avoiding Node.js memory bloat.
+
 
 

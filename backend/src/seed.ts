@@ -205,12 +205,13 @@ async function seed() {
           ? Math.round(totalAmount / 2)
           : 0;
 
+      const randVal = Math.random();
       const source =
-        (b + idx) % 3 === 0
-          ? BookingSource.BOT
-          : (b + idx) % 2 === 0
+        randVal < 0.46
+          ? BookingSource.WEB
+          : randVal < 0.82
           ? BookingSource.PORTAL
-          : BookingSource.WEB;
+          : BookingSource.BOT;
 
       const status =
         (b + idx) % 9 === 0

@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { DatabaseSchemasModule } from './schemas/database-schemas.module';
 import { AuthModule } from './auth/auth.module';
 import { FacilitiesModule } from './facilities/facilities.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { FacilitiesModule } from './facilities/facilities.module';
     DatabaseSchemasModule,
     AuthModule,
     FacilitiesModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
