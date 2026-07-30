@@ -51,15 +51,27 @@ export const LoginPage: React.FC = () => {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        background: '#f0f2f5',
+        background: '#F1F5F9',
+        padding: 16,
       }}
     >
-      <Card style={{ width: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <Title level={3} style={{ marginBottom: 4 }}>
-            hrkt Super Admin
+      <Card
+        className="hrkt-card"
+        style={{ width: 420, borderRadius: 16, border: '1px solid #E5E7EB', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)' }}
+        bodyStyle={{ padding: 36 }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <img
+            src="/hrkt green-01.svg"
+            alt="HRKT Logo"
+            style={{ height: 48, width: 'auto', marginBottom: 20, objectFit: 'contain' }}
+          />
+          <Title level={3} style={{ marginBottom: 6, fontSize: 22, fontWeight: 700, color: '#111827' }}>
+            HRKT Super Admin
           </Title>
-          <Text type="secondary">Sign in to manage facilities</Text>
+          <Text type="secondary" style={{ fontSize: 13, color: '#64748B' }}>
+            Sign in to access platform administration panel
+          </Text>
         </div>
 
         {error && (
@@ -67,7 +79,7 @@ export const LoginPage: React.FC = () => {
             message={error}
             type="error"
             showIcon
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: 24, borderRadius: 8 }}
             closable
             onClose={() => setError(null)}
           />
@@ -76,6 +88,7 @@ export const LoginPage: React.FC = () => {
         <Form name="login" onFinish={onFinish} layout="vertical" autoComplete="off">
           <Form.Item
             name="email"
+            label={<Text strong style={{ color: '#334155', fontSize: 13 }}>Email Address</Text>}
             rules={[
               { required: true, message: 'Email is required' },
               { type: 'email', message: 'Enter a valid email' },
@@ -83,25 +96,28 @@ export const LoginPage: React.FC = () => {
           >
             <Input
               id="login-email"
-              prefix={<UserOutlined />}
-              placeholder="Email"
+              prefix={<UserOutlined style={{ color: '#94A3B8' }} />}
+              placeholder="Email address"
               size="large"
+              style={{ borderRadius: 8, height: 42 }}
             />
           </Form.Item>
 
           <Form.Item
             name="password"
+            label={<Text strong style={{ color: '#334155', fontSize: 13 }}>Password</Text>}
             rules={[{ required: true, message: 'Password is required' }]}
           >
             <Input.Password
               id="login-password"
-              prefix={<LockOutlined />}
+              prefix={<LockOutlined style={{ color: '#94A3B8' }} />}
               placeholder="Password"
               size="large"
+              style={{ borderRadius: 8, height: 42 }}
             />
           </Form.Item>
 
-          <Form.Item>
+          <Form.Item style={{ marginTop: 28, marginBottom: 0 }}>
             <Button
               id="login-submit"
               type="primary"
@@ -109,6 +125,14 @@ export const LoginPage: React.FC = () => {
               block
               size="large"
               loading={loading}
+              style={{
+                backgroundColor: '#00C27A',
+                borderColor: '#00C27A',
+                height: 42,
+                borderRadius: 8,
+                fontWeight: 600,
+                fontSize: 15,
+              }}
             >
               Sign In
             </Button>

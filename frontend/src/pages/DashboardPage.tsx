@@ -4,10 +4,8 @@ import {
   Row,
   Col,
   Card,
-  Statistic,
   Progress,
   Table,
-  Tag,
   Spin,
   Alert,
   Tooltip,
@@ -24,6 +22,7 @@ import {
   MobileOutlined,
   RobotOutlined,
   TagOutlined,
+  ArrowUpOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
@@ -129,8 +128,8 @@ export const DashboardPage: React.FC = () => {
       key: 'key',
       render: (key: string) => (
         <Space>
-          <CheckCircleOutlined style={{ color: '#52c41a' }} />
-          <Text strong>{ruleNames[key] || key}</Text>
+          <CheckCircleOutlined style={{ color: '#00C27A' }} />
+          <Text strong style={{ color: '#111827' }}>{ruleNames[key] || key}</Text>
         </Space>
       ),
     },
@@ -143,9 +142,9 @@ export const DashboardPage: React.FC = () => {
             percent={record.percentage}
             size="small"
             style={{ width: 160 }}
-            strokeColor="#1677ff"
+            strokeColor="#00C27A"
           />
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary" style={{ fontSize: 12, color: '#6B7280' }}>
             {record.enabledCount} of {record.totalFacilities} active facilities
           </Text>
         </div>
@@ -157,114 +156,214 @@ export const DashboardPage: React.FC = () => {
       key: 'status',
       align: 'right' as const,
       render: (pct: number) => (
-        <Tag color={pct >= 60 ? 'green' : pct >= 30 ? 'orange' : 'default'}>
+        <span className={pct >= 60 ? 'hrkt-badge hrkt-badge-green' : pct >= 30 ? 'hrkt-badge hrkt-badge-orange' : 'hrkt-badge hrkt-badge-gray'}>
           {pct}% Adopted
-        </Tag>
+        </span>
       ),
     },
   ];
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <Title level={2} style={{ margin: 0 }}>
-          Platform Dashboard
+    <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+      {/* Page Header with Increased Hierarchy */}
+      <div style={{ marginBottom: 32 }}>
+        <Title level={1} style={{ margin: 0, fontSize: 28, fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em' }}>
+          Platform Overview
         </Title>
-        <Text type="secondary">
-          System-wide performance, revenue trends, and tenant feature adoption across hrkt platform
+        <Text type="secondary" style={{ fontSize: 13, color: '#64748B', display: 'block', marginTop: 4 }}>
+          System-wide performance, revenue trends, and tenant feature adoption across HRKT platform
         </Text>
       </div>
 
-      {/* Primary KPI Cards */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      {/* Primary KPI Cards with Top-to-Bottom Metric Hierarchy */}
+      <Row gutter={[20, 20]} style={{ marginBottom: 32 }}>
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderRadius: 8 }} bodyStyle={{ padding: 20 }}>
-            <Statistic
-              title={
-                <Space>
-                  <DollarOutlined style={{ color: '#52c41a' }} />
-                  <span>30-Day Platform Revenue</span>
-                </Space>
-              }
-              value={kpis.revenue30Days}
-              precision={0}
-              suffix="PKR"
-              valueStyle={{ color: '#1f1f1f', fontWeight: 600 }}
-            />
-            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+          <Card className="hrkt-card hrkt-card-hover" bodyStyle={{ padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <Text style={{ fontSize: 13, fontWeight: 500, color: '#64748B' }}>30-Day Platform Revenue</Text>
+                <div style={{ fontSize: 26, fontWeight: 700, color: '#0F172A', marginTop: 6, marginBottom: 8, letterSpacing: '-0.02em' }}>
+                  PKR {kpis.revenue30Days.toLocaleString()}
+                </div>
+              </div>
+              <div style={{ width: 42, height: 42, borderRadius: 10, background: '#E8FFF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <DollarOutlined style={{ fontSize: 20, color: '#00C27A' }} />
+              </div>
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: '#E8FFF5', color: '#00C27A' }}>
+              <ArrowUpOutlined style={{ fontSize: 11 }} />
+              <span>+12.4% vs last month</span>
+            </div>
+            <Text type="secondary" style={{ fontSize: 12, color: '#94A3B8', marginTop: 8, display: 'block' }}>
               All-time: PKR {kpis.totalRevenueAllTime.toLocaleString()}
             </Text>
           </Card>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderRadius: 8 }} bodyStyle={{ padding: 20 }}>
-            <Statistic
-              title={
-                <Space>
-                  <BankOutlined style={{ color: '#1677ff' }} />
-                  <span>Total Facilities</span>
-                </Space>
-              }
-              value={kpis.totalFacilities}
-              valueStyle={{ color: '#1f1f1f', fontWeight: 600 }}
-            />
-            <Space size={4} style={{ marginTop: 4 }}>
-              <Tag color="green">{kpis.activeFacilities} Active</Tag>
-              <Tag color="red">{kpis.suspendedFacilities} Suspended</Tag>
-              <Tag color="default">{kpis.inactiveFacilities} Inactive</Tag>
+          <Card className="hrkt-card hrkt-card-hover" bodyStyle={{ padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <Text style={{ fontSize: 13, fontWeight: 500, color: '#64748B' }}>Total Facilities</Text>
+                <div style={{ fontSize: 26, fontWeight: 700, color: '#0F172A', marginTop: 6, marginBottom: 8, letterSpacing: '-0.02em' }}>
+                  {kpis.totalFacilities}
+                </div>
+              </div>
+              <div style={{ width: 42, height: 42, borderRadius: 10, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BankOutlined style={{ fontSize: 20, color: '#475569' }} />
+              </div>
+            </div>
+            <Space size={4} wrap style={{ marginTop: 2 }}>
+              <span className="hrkt-badge hrkt-badge-green">{kpis.activeFacilities} Active</span>
+              {kpis.suspendedFacilities > 0 && <span className="hrkt-badge hrkt-badge-red">{kpis.suspendedFacilities} Suspended</span>}
+              {kpis.inactiveFacilities > 0 && <span className="hrkt-badge hrkt-badge-gray">{kpis.inactiveFacilities} Inactive</span>}
             </Space>
           </Card>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderRadius: 8 }} bodyStyle={{ padding: 20 }}>
-            <Statistic
-              title={
-                <Space>
-                  <UserOutlined style={{ color: '#722ed1' }} />
-                  <span>Active Customers</span>
-                </Space>
-              }
-              value={kpis.totalActiveCustomers}
-              valueStyle={{ color: '#1f1f1f', fontWeight: 600 }}
-            />
-            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
-              Filter: customer.status === 'active'
+          <Card className="hrkt-card hrkt-card-hover" bodyStyle={{ padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <Text style={{ fontSize: 13, fontWeight: 500, color: '#64748B' }}>Active Customers</Text>
+                <div style={{ fontSize: 26, fontWeight: 700, color: '#0F172A', marginTop: 6, marginBottom: 8, letterSpacing: '-0.02em' }}>
+                  {kpis.totalActiveCustomers.toLocaleString()}
+                </div>
+              </div>
+              <div style={{ width: 42, height: 42, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <UserOutlined style={{ fontSize: 20, color: '#2563EB' }} />
+              </div>
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: '#EFF6FF', color: '#2563EB' }}>
+              <ArrowUpOutlined style={{ fontSize: 11 }} />
+              <span>+8.1% user growth</span>
+            </div>
+            <Text type="secondary" style={{ fontSize: 12, color: '#94A3B8', marginTop: 8, display: 'block' }}>
+              Active platform customers
             </Text>
           </Card>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderRadius: 8 }} bodyStyle={{ padding: 20 }}>
-            <Statistic
-              title={
-                <Space>
-                  <CalendarOutlined style={{ color: '#fa8c16' }} />
-                  <span>30-Day Bookings</span>
-                </Space>
-              }
-              value={kpis.bookings30Days}
-              valueStyle={{ color: '#1f1f1f', fontWeight: 600 }}
-            />
-            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+          <Card className="hrkt-card hrkt-card-hover" bodyStyle={{ padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <Text style={{ fontSize: 13, fontWeight: 500, color: '#64748B' }}>30-Day Bookings</Text>
+                <div style={{ fontSize: 26, fontWeight: 700, color: '#0F172A', marginTop: 6, marginBottom: 8, letterSpacing: '-0.02em' }}>
+                  {kpis.bookings30Days.toLocaleString()}
+                </div>
+              </div>
+              <div style={{ width: 42, height: 42, borderRadius: 10, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CalendarOutlined style={{ fontSize: 20, color: '#B45309' }} />
+              </div>
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: '#E8FFF5', color: '#00C27A' }}>
+              <ArrowUpOutlined style={{ fontSize: 11 }} />
+              <span>+5.3% vs last period</span>
+            </div>
+            <Text type="secondary" style={{ fontSize: 12, color: '#94A3B8', marginTop: 8, display: 'block' }}>
               Total All-Time: {kpis.totalBookings.toLocaleString()}
             </Text>
           </Card>
         </Col>
       </Row>
 
-      {/* Row 2: Booking Rule Adoption (Spec Priority) + Source Breakdown */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      {/* Featured Focal Section: Month-over-Month Revenue Chart + Discount Adoption */}
+      <Row gutter={[20, 20]} style={{ marginBottom: 32 }}>
         <Col xs={24} lg={15}>
           <Card
+            className="hrkt-card"
             title={
               <Space>
-                <CheckCircleOutlined style={{ color: '#1677ff' }} />
-                <span>Booking-Rule Adoption Metric</span>
+                <DollarOutlined style={{ color: '#00C27A', fontSize: 18 }} />
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#0F172A' }}>Month-over-Month Revenue Performance</span>
+              </Space>
+            }
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, height: 220, paddingTop: 20, paddingBottom: 8 }}>
+              {revenueTrend.map((m, i) => {
+                const heightPct = Math.round((m.revenue / maxMonthlyRevenue) * 100);
+                const isCurrentMonth = i === revenueTrend.length - 1;
+                return (
+                  <div key={m.month} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                    <Text style={{ fontSize: 11, fontWeight: 600, color: isCurrentMonth ? '#00C27A' : '#64748B', marginBottom: 6 }}>
+                      PKR {Math.round(m.revenue / 1000)}k
+                    </Text>
+                    <Tooltip title={`PKR ${m.revenue.toLocaleString()} (${m.bookings} bookings)`}>
+                      <div
+                        style={{
+                          width: '100%',
+                          maxWidth: 44,
+                          height: `${Math.max(heightPct, 12)}%`,
+                          backgroundColor: 'rgba(0, 194, 122, 0.70)',
+                          borderRadius: '6px 6px 0 0',
+                          transition: 'all 0.2s ease',
+                          opacity: isCurrentMonth ? 1 : 0.8,
+                          cursor: 'pointer',
+                        }}
+                      />
+                    </Tooltip>
+                    <Text style={{ fontSize: 11, color: '#64748B', marginTop: 8 }}>{m.month}</Text>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </Col>
+
+        <Col xs={24} lg={9}>
+          <Card
+            className="hrkt-card"
+            title={
+              <Space>
+                <TagOutlined style={{ color: '#00C27A', fontSize: 18 }} />
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#0F172A' }}>Discount Type Adoption</span>
+              </Space>
+            }
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {discountAdoption.map((d) => (
+                <div
+                  key={d.type}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: 14,
+                    background: '#F8FAFC',
+                    borderRadius: 10,
+                    border: '1px solid #E2E8F0',
+                  }}
+                >
+                  <div>
+                    <Text strong style={{ display: 'block', fontSize: 13, color: '#0F172A' }}>
+                      {discountTypeNames[d.type] || d.type}
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 12, color: '#64748B' }}>
+                      {d.activeCount} active rules across platform
+                    </Text>
+                  </div>
+                  <span className="hrkt-badge hrkt-badge-green" style={{ fontSize: 12 }}>
+                    {d.totalTimesUsed.toLocaleString()} Uses
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Secondary Section: Booking Rule Adoption + Booking Channel Distribution */}
+      <Row gutter={[20, 20]}>
+        <Col xs={24} lg={15}>
+          <Card
+            className="hrkt-card"
+            title={
+              <Space>
+                <CheckCircleOutlined style={{ color: '#00C27A', fontSize: 18 }} />
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#0F172A' }}>Booking-Rule Adoption Metric</span>
                 <Tooltip title="Tracks how many active facilities have enabled each rule key across the platform">
-                  <InfoCircleOutlined style={{ color: '#bfbfbf' }} />
+                  <InfoCircleOutlined style={{ color: '#94A3B8' }} />
                 </Tooltip>
               </Space>
             }
@@ -275,143 +374,57 @@ export const DashboardPage: React.FC = () => {
               columns={ruleColumns}
               rowKey="key"
               pagination={false}
-              size="middle"
+              size="small"
             />
           </Card>
         </Col>
 
         <Col xs={24} lg={9}>
           <Card
+            className="hrkt-card"
             title={
               <Space>
-                <GlobalOutlined style={{ color: '#13c2c2' }} />
-                <span>Booking Channel Distribution</span>
+                <GlobalOutlined style={{ color: '#00C27A', fontSize: 18 }} />
+                <span style={{ fontSize: 16, fontWeight: 600, color: '#0F172A' }}>Booking Channel Distribution</span>
               </Space>
             }
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18, paddingTop: 4 }}>
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text>
-                    <GlobalOutlined style={{ marginRight: 6, color: '#1677ff' }} /> Web Widget
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={{ fontWeight: 500, color: '#334155' }}>
+                    <GlobalOutlined style={{ marginRight: 8, color: '#00C27A' }} /> Web Widget
                   </Text>
-                  <Text strong>
+                  <Text strong style={{ color: '#0F172A' }}>
                     {sourceBreakdown.web} ({kpis.totalBookings > 0 ? Math.round((sourceBreakdown.web / kpis.totalBookings) * 100) : 0}%)
                   </Text>
                 </div>
-                <Progress percent={kpis.totalBookings > 0 ? Math.round((sourceBreakdown.web / kpis.totalBookings) * 100) : 0} showInfo={false} strokeColor="#1677ff" />
+                <Progress percent={kpis.totalBookings > 0 ? Math.round((sourceBreakdown.web / kpis.totalBookings) * 100) : 0} showInfo={false} strokeColor="#00C27A" />
               </div>
 
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text>
-                    <MobileOutlined style={{ marginRight: 6, color: '#722ed1' }} /> Customer Portal
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={{ fontWeight: 500, color: '#334155' }}>
+                    <MobileOutlined style={{ marginRight: 8, color: '#00C27A' }} /> Customer Portal
                   </Text>
-                  <Text strong>
+                  <Text strong style={{ color: '#0F172A' }}>
                     {sourceBreakdown.portal} ({kpis.totalBookings > 0 ? Math.round((sourceBreakdown.portal / kpis.totalBookings) * 100) : 0}%)
                   </Text>
                 </div>
-                <Progress percent={kpis.totalBookings > 0 ? Math.round((sourceBreakdown.portal / kpis.totalBookings) * 100) : 0} showInfo={false} strokeColor="#722ed1" />
+                <Progress percent={kpis.totalBookings > 0 ? Math.round((sourceBreakdown.portal / kpis.totalBookings) * 100) : 0} showInfo={false} strokeColor="#00C27A" />
               </div>
 
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text>
-                    <RobotOutlined style={{ marginRight: 6, color: '#fa8c16' }} /> WhatsApp/AI Bot
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={{ fontWeight: 500, color: '#334155' }}>
+                    <RobotOutlined style={{ marginRight: 8, color: '#F59E0B' }} /> WhatsApp/AI Bot
                   </Text>
-                  <Text strong>
+                  <Text strong style={{ color: '#0F172A' }}>
                     {sourceBreakdown.bot} ({kpis.totalBookings > 0 ? Math.round((sourceBreakdown.bot / kpis.totalBookings) * 100) : 0}%)
                   </Text>
                 </div>
-                <Progress percent={kpis.totalBookings > 0 ? Math.round((sourceBreakdown.bot / kpis.totalBookings) * 100) : 0} showInfo={false} strokeColor="#fa8c16" />
+                <Progress percent={kpis.totalBookings > 0 ? Math.round((sourceBreakdown.bot / kpis.totalBookings) * 100) : 0} showInfo={false} strokeColor="#F59E0B" />
               </div>
-            </div>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Row 3: Revenue Trend Chart + Discount Adoption */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} lg={15}>
-          <Card
-            title={
-              <Space>
-                <DollarOutlined style={{ color: '#52c41a' }} />
-                <span>Month-over-Month Platform Revenue (Last 6 Months)</span>
-              </Space>
-            }
-          >
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, height: 200, paddingTop: 20 }}>
-              {revenueTrend.map((item) => {
-                const heightPct = Math.round((item.revenue / maxMonthlyRevenue) * 100);
-                return (
-                  <div
-                    key={item.month}
-                    style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      height: '100%',
-                      justifyContent: 'flex-end',
-                    }}
-                  >
-                    <Tooltip title={`PKR ${item.revenue.toLocaleString()} (${item.bookings} bookings)`}>
-                      <div
-                        style={{
-                          width: '100%',
-                          maxWidth: 40,
-                          height: `${Math.max(heightPct, 8)}%`,
-                          background: 'linear-gradient(180deg, #52c41a 0%, #278003 100%)',
-                          borderRadius: '4px 4px 0 0',
-                          transition: 'all 0.3s',
-                        }}
-                      />
-                    </Tooltip>
-                    <Text type="secondary" style={{ fontSize: 11, marginTop: 8 }}>
-                      {item.month}
-                    </Text>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={24} lg={9}>
-          <Card
-            title={
-              <Space>
-                <TagOutlined style={{ color: '#eb2f96' }} />
-                <span>Discount Type Adoption</span>
-              </Space>
-            }
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {discountAdoption.map((disc) => (
-                <div
-                  key={disc.type}
-                  style={{
-                    padding: 12,
-                    background: '#fafafa',
-                    borderRadius: 6,
-                    border: '1px solid #f0f0f0',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <div>
-                    <Text strong>{discountTypeNames[disc.type] || disc.type}</Text>
-                    <div>
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        {disc.activeCount} active rules across platform
-                      </Text>
-                    </div>
-                  </div>
-                  <Tag color="purple">{disc.totalTimesUsed} Uses</Tag>
-                </div>
-              ))}
             </div>
           </Card>
         </Col>

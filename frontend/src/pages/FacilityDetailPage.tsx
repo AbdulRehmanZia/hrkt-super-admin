@@ -149,17 +149,27 @@ interface CustomerRow {
   createdAt: string;
 }
 
-const statusColors: Record<string, string> = {
-  active: 'green',
-  inactive: 'default',
-  suspended: 'red',
+const getStatusBadge = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'active':
+      return <span className="hrkt-badge hrkt-badge-green">Active</span>;
+    case 'suspended':
+      return <span className="hrkt-badge hrkt-badge-red">Suspended</span>;
+    default:
+      return <span className="hrkt-badge hrkt-badge-gray">{status}</span>;
+  }
 };
 
-const subStatusColors: Record<string, string> = {
-  active: 'processing',
-  trial: 'warning',
-  past_due: 'error',
-  cancelled: 'default',
+const getSubBadge = (plan: string, status: string) => {
+  const label = `${plan.toUpperCase()} · ${status.toUpperCase()}`;
+  if (status === 'trial') {
+    return <span className="hrkt-badge hrkt-badge-orange">{label}</span>;
+  } else if (plan === 'enterprise') {
+    return <span className="hrkt-badge hrkt-badge-blue">{label}</span>;
+  } else if (status === 'active') {
+    return <span className="hrkt-badge hrkt-badge-green">{label}</span>;
+  }
+  return <span className="hrkt-badge hrkt-badge-gray">{label}</span>;
 };
 
 const ruleNames: Record<string, string> = {
@@ -352,10 +362,10 @@ export const FacilityDetailPage: React.FC = () => {
       key: 'time',
       render: (_: any, r: BookingRow) => (
         <div>
-          <Text strong style={{ fontSize: 13 }}>
+          <Text strong style={{ fontSize: 13, color: '#111827' }}>
             {new Date(r.startTime).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
           </Text>
-          <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+          <div style={{ fontSize: 12, color: '#6B7280' }}>
             {new Date(r.startTime).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })} - {new Date(r.endTime).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })}
           </div>
         </div>
@@ -365,7 +375,7 @@ export const FacilityDetailPage: React.FC = () => {
       title: 'Court',
       key: 'court',
       render: (_: any, r: BookingRow) => (
-        <span>{r.courtId ? `${r.courtId.name} (${r.courtId.sport})` : 'Main Court'}</span>
+        <span style={{ color: '#374151' }}>{r.courtId ? `${r.courtId.name} (${r.courtId.sport})` : 'Main Court'}</span>
       ),
     },
     {
@@ -373,8 +383,8 @@ export const FacilityDetailPage: React.FC = () => {
       key: 'customer',
       render: (_: any, r: BookingRow) => (
         <div>
-          <Text strong>{r.customerId?.name || 'Guest'}</Text>
-          {r.customerId?.phone && <div style={{ fontSize: 12, color: '#8c8c8c' }}>{r.customerId.phone}</div>}
+          <Text strong style={{ color: '#111827' }}>{r.customerId?.name || 'Guest'}</Text>
+          {r.customerId?.phone && <div style={{ fontSize: 12, color: '#6B7280' }}>{r.customerId.phone}</div>}
         </div>
       ),
     },
@@ -386,7 +396,7 @@ export const FacilityDetailPage: React.FC = () => {
         const IconComp = channelIcons[r.source] || GlobalOutlined;
         return (
           <Tooltip title={`Source: ${r.source}`}>
-            <IconComp style={{ fontSize: 16, color: '#1677ff' }} />
+            <IconComp style={{ fontSize: 16, color: '#00C27A' }} />
           </Tooltip>
         );
       },
@@ -396,9 +406,9 @@ export const FacilityDetailPage: React.FC = () => {
       dataIndex: 'paymentStatus',
       key: 'paymentStatus',
       render: (status: string) => (
-        <Tag color={status === 'fully_paid' ? 'green' : status === 'partially_paid' ? 'orange' : 'red'}>
+        <span className={status === 'fully_paid' ? 'hrkt-badge hrkt-badge-green' : status === 'partially_paid' ? 'hrkt-badge hrkt-badge-orange' : 'hrkt-badge hrkt-badge-red'}>
           {status ? status.toUpperCase() : 'UNPAID'}
-        </Tag>
+        </span>
       ),
     },
     {
@@ -407,67 +417,62 @@ export const FacilityDetailPage: React.FC = () => {
       align: 'right' as const,
       render: (_: any, r: BookingRow) => (
         <div>
-          <Text strong>PKR {r.amountPaid.toLocaleString()}</Text>
-          <div style={{ fontSize: 11, color: '#8c8c8c' }}>Total: {r.totalAmount.toLocaleString()}</div>
+          <Text strong style={{ color: '#111827' }}>PKR {r.amountPaid.toLocaleString()}</Text>
+          <div style={{ fontSize: 11, color: '#6B7280' }}>Total: {r.totalAmount.toLocaleString()}</div>
         </div>
       ),
     },
   ];
 
   const customerColumns = [
-    { title: 'Customer Name', dataIndex: 'name', key: 'name' },
-    { title: 'Phone Number', dataIndex: 'phone', key: 'phone' },
-    { title: 'Email Address', dataIndex: 'email', key: 'email' },
+    { title: 'Customer Name', dataIndex: 'name', key: 'name', render: (val: string) => <Text strong style={{ color: '#111827' }}>{val}</Text> },
+    { title: 'Phone Number', dataIndex: 'phone', key: 'phone', render: (val: string) => <Text style={{ color: '#4B5563' }}>{val}</Text> },
+    { title: 'Email Address', dataIndex: 'email', key: 'email', render: (val: string) => <Text style={{ color: '#4B5563' }}>{val}</Text> },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (st: string) => <Tag color={st === 'active' ? 'green' : 'default'}>{st.toUpperCase()}</Tag>,
+      render: (st: string) => <span className={st === 'active' ? 'hrkt-badge hrkt-badge-green' : 'hrkt-badge hrkt-badge-gray'}>{st.toUpperCase()}</span>,
     },
     {
       title: 'Joined Date',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (dt: string) => new Date(dt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }),
+      render: (dt: string) => <Text style={{ color: '#6B7280' }}>{new Date(dt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>,
     },
   ];
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1280, margin: '0 auto' }}>
       {/* Back Button */}
-      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/facilities')} style={{ marginBottom: 16 }}>
+      <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/facilities')} style={{ marginBottom: 20, borderRadius: 8 }}>
         Back to Facilities
       </Button>
 
-      {/* Header Banner with Administrative Controls (P1) */}
-      <Card style={{ marginBottom: 24, borderRadius: 12 }}>
+      {/* Header Banner */}
+      <Card className="hrkt-card" bodyStyle={{ padding: 24 }} style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Title level={2} style={{ margin: 0 }}>
+              <Title level={2} style={{ margin: 0, fontSize: 26, fontWeight: 700, color: '#111827' }}>
                 {facility.name}
               </Title>
-              <Tag color={statusColors[facility.status] || 'default'} style={{ fontSize: 13, padding: '2px 10px' }}>
-                {facility.status.toUpperCase()}
-              </Tag>
-              {subscription && (
-                <Tag color={subStatusColors[subscription.status] || 'default'} style={{ fontSize: 13, padding: '2px 10px' }}>
-                  {subscription.plan.toUpperCase()} · {subscription.status.toUpperCase()}
-                </Tag>
-              )}
+              {getStatusBadge(facility.status)}
+              {subscription && getSubBadge(subscription.plan, subscription.status)}
             </div>
-            <Paragraph type="secondary" style={{ margin: '4px 0 0' }}>
+            <Paragraph type="secondary" style={{ margin: '6px 0 0', color: '#6B7280' }}>
               <BankOutlined style={{ marginRight: 6 }} /> {facility.city}, Pakistan · Onboarded on{' '}
               {new Date(facility.createdAt).toLocaleDateString('en-PK', { month: 'long', year: 'numeric' })}
             </Paragraph>
           </div>
 
-          {/* Action Control Buttons (P1 Requirement) */}
+          {/* Action Control Buttons */}
           <Space wrap>
             <Button
               icon={<EditOutlined />}
               type="primary"
               onClick={() => setEditModalOpen(true)}
+              style={{ backgroundColor: '#00C27A', borderColor: '#00C27A', fontWeight: 600, borderRadius: 8 }}
             >
               Edit Facility Info
             </Button>
@@ -478,6 +483,7 @@ export const FacilityDetailPage: React.FC = () => {
                 courtLimitForm.setFieldsValue({ courtLimit: facility.courtLimit });
                 setCourtLimitModalVisible(true);
               }}
+              style={{ borderRadius: 8 }}
             >
               Edit Court Limit ({facility.courtLimit})
             </Button>
@@ -488,6 +494,7 @@ export const FacilityDetailPage: React.FC = () => {
                 credentialsForm.setFieldsValue({ email: adminUser?.email || '' });
                 setCredentialsModalVisible(true);
               }}
+              style={{ borderRadius: 8 }}
             >
               Reset Admin Credentials
             </Button>
@@ -504,6 +511,7 @@ export const FacilityDetailPage: React.FC = () => {
                 danger={facility.status === 'active'}
                 type={facility.status === 'active' ? 'default' : 'primary'}
                 icon={facility.status === 'active' ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+                style={{ borderRadius: 8 }}
               >
                 {facility.status === 'active' ? 'Suspend Facility' : 'Reactivate Facility'}
               </Button>
@@ -513,31 +521,33 @@ export const FacilityDetailPage: React.FC = () => {
       </Card>
 
       {/* Stats Cards Row */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderRadius: 8 }} bodyStyle={{ padding: 18 }}>
+          <Card className="hrkt-card hrkt-card-hover" bodyStyle={{ padding: 20 }}>
             <Statistic
-              title="30-Day Revenue"
+              title={<span style={{ color: '#6B7280', fontSize: 13 }}>30-Day Revenue</span>}
               value={stats.revenue30Days}
               precision={0}
               suffix="PKR"
-              prefix={<DollarOutlined style={{ color: '#52c41a' }} />}
+              valueStyle={{ color: '#111827', fontWeight: 700 }}
+              prefix={<DollarOutlined style={{ color: '#00C27A' }} />}
             />
-            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+            <Text type="secondary" style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4, display: 'block' }}>
               All-Time: PKR {stats.totalRevenueAllTime.toLocaleString()}
             </Text>
           </Card>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
-          <Card style={{ borderRadius: 8 }} bodyStyle={{ padding: 18 }}>
+          <Card className="hrkt-card hrkt-card-hover" bodyStyle={{ padding: 20 }}>
             <Statistic
-              title="Lifetime Bookings"
+              title={<span style={{ color: '#6B7280', fontSize: 13 }}>Lifetime Bookings</span>}
               value={stats.totalBookings}
-              prefix={<CalendarOutlined style={{ color: '#1677ff' }} />}
+              valueStyle={{ color: '#111827', fontWeight: 700 }}
+              prefix={<CalendarOutlined style={{ color: '#00C27A' }} />}
             />
-            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
-              Cancellation Rate: <strong>{stats.cancellationRate}%</strong> ({stats.cancelledBookings} cancelled)
+            <Text type="secondary" style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4, display: 'block' }}>
+              Cancellation Rate: <strong style={{ color: '#111827' }}>{stats.cancellationRate}%</strong> ({stats.cancelledBookings} cancelled)
             </Text>
           </Card>
         </Col>
@@ -770,6 +780,7 @@ export const FacilityDetailPage: React.FC = () => {
                     columns={bookingColumns}
                     rowKey="_id"
                     loading={bookingsLoading}
+                    scroll={{ x: 800 }}
                     pagination={{
                       current: bookingsPage,
                       total: bookingsTotal,
@@ -801,6 +812,7 @@ export const FacilityDetailPage: React.FC = () => {
                     columns={customerColumns}
                     rowKey="_id"
                     loading={customersLoading}
+                    scroll={{ x: 800 }}
                     pagination={{
                       current: customersPage,
                       total: customersTotal,

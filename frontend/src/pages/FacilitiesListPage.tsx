@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, Table, Button, Space, Card, Tag, Input, Select } from 'antd';
+import { Typography, Table, Button, Space, Card, Input, Select } from 'antd';
 import {
   PlusOutlined,
   SearchOutlined,
   EyeOutlined,
   EditOutlined,
+  ClearOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { CreateFacilityModal, type FacilityEditTarget } from '../components/CreateFacilityModal';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface FacilityRow {
   _id: string;
@@ -34,27 +35,27 @@ interface FacilitiesResponse {
   meta: { total: number; page: number; limit: number; totalPages: number };
 }
 
-const statusColors: Record<string, string> = {
-  active: 'green',
-  inactive: 'default',
-  suspended: 'red',
+const getStatusBadge = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'active':
+      return <span className="hrkt-badge hrkt-badge-green">Active</span>;
+    case 'suspended':
+      return <span className="hrkt-badge hrkt-badge-red">Suspended</span>;
+    default:
+      return <span className="hrkt-badge hrkt-badge-gray">{status}</span>;
+  }
 };
 
-const subStatusColors: Record<string, string> = {
-  active: 'processing',
-  trial: 'warning',
-  past_due: 'error',
-  cancelled: 'default',
-  none: 'default',
-};
-
-const formatLastBooking = (date: string | null): string => {
-  if (!date) return 'Never';
-  return new Date(date).toLocaleDateString('en-PK', {
-    day: 'numeric',
-    month: 'short',
-    year: '2-digit',
-  });
+const getSubBadge = (plan: string, status: string) => {
+  const label = `${plan.toUpperCase()} · ${status.toUpperCase()}`;
+  if (status === 'trial') {
+    return <span className="hrkt-badge hrkt-badge-orange">{label}</span>;
+  } else if (plan === 'enterprise') {
+    return <span className="hrkt-badge hrkt-badge-blue">{label}</span>;
+  } else if (status === 'active') {
+    return <span className="hrkt-badge hrkt-badge-green">{label}</span>;
+  }
+  return <span className="hrkt-badge hrkt-badge-gray">{label}</span>;
 };
 
 export const FacilitiesListPage: React.FC = () => {
@@ -68,6 +69,8 @@ export const FacilitiesListPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [subStatusFilter, setSubStatusFilter] = useState<string | undefined>(undefined);
+
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
 
   // Modal open & edit states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -94,109 +97,100 @@ export const FacilitiesListPage: React.FC = () => {
     fetchFacilities(page, search, statusFilter, subStatusFilter);
   }, [page, search, statusFilter, subStatusFilter]);
 
+  const sortedData = React.useMemo(() => {
+    if (!sortBy) return data;
+    const sorted = [...data];
+    if (sortBy === 'revenue_desc') {
+      return sorted.sort((a, b) => b.totalRevenue - a.totalRevenue);
+    } else if (sortBy === 'revenue_asc') {
+      return sorted.sort((a, b) => a.totalRevenue - b.totalRevenue);
+    } else if (sortBy === 'bookings_desc') {
+      return sorted.sort((a, b) => b.lifetimeBookings - a.lifetimeBookings);
+    } else if (sortBy === 'name_asc') {
+      return sorted.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return sorted;
+  }, [data, sortBy]);
+
   const columns = [
     {
       title: 'Facility Name',
       dataIndex: 'name',
       key: 'name',
-      sorter: (a: FacilityRow, b: FacilityRow) => a.name.localeCompare(b.name),
-      ellipsis: true,
+      width: 190,
+      render: (name: string) => <Text strong style={{ color: '#111827', whiteSpace: 'nowrap' }}>{name}</Text>,
     },
     {
       title: 'City',
       dataIndex: 'city',
       key: 'city',
-      width: 100,
+      width: 130,
+      render: (city: string) => <span style={{ color: '#4B5563', whiteSpace: 'nowrap' }}>{city}</span>,
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      width: 105,
-      render: (status: string) => (
-        <Tag color={statusColors[status] || 'default'} style={{ margin: 0 }}>
-          {status.toUpperCase()}
-        </Tag>
-      ),
+      width: 90,
+      render: (status: string) => getStatusBadge(status),
     },
     {
       title: 'Courts',
       dataIndex: 'courtCount',
       key: 'courtCount',
       align: 'center' as const,
-      width: 75,
+      width: 65,
+      render: (val: number) => <Text strong style={{ color: '#111827' }}>{val}</Text>,
     },
     {
       title: 'Customers',
       dataIndex: 'activeCustomers',
       key: 'activeCustomers',
       align: 'center' as const,
-      width: 95,
+      width: 80,
+      render: (val: number) => <Text style={{ color: '#4B5563' }}>{val}</Text>,
     },
     {
       title: 'Subscription',
       key: 'subscription',
-      width: 160,
-      render: (_: any, record: FacilityRow) => (
-        <Tag color={subStatusColors[record.subscriptionStatus] || 'default'} style={{ margin: 0 }}>
-          {record.subscriptionPlan.toUpperCase()} · {record.subscriptionStatus.toUpperCase()}
-        </Tag>
-      ),
+      width: 150,
+      render: (_: any, record: FacilityRow) => getSubBadge(record.subscriptionPlan, record.subscriptionStatus),
     },
     {
       title: 'Revenue (PKR)',
       dataIndex: 'totalRevenue',
       key: 'totalRevenue',
       align: 'right' as const,
-      width: 130,
-      sorter: (a: FacilityRow, b: FacilityRow) => a.totalRevenue - b.totalRevenue,
-      render: (val: number) => val.toLocaleString(),
+      width: 110,
+      render: (val: number) => <Text strong style={{ color: '#111827' }}>{val.toLocaleString()}</Text>,
     },
     {
       title: 'Bookings',
       dataIndex: 'lifetimeBookings',
       key: 'lifetimeBookings',
       align: 'center' as const,
-      width: 95,
-      sorter: (a: FacilityRow, b: FacilityRow) => a.lifetimeBookings - b.lifetimeBookings,
-    },
-    {
-      title: 'Last Booking',
-      dataIndex: 'lastBookingDate',
-      key: 'lastBookingDate',
-      width: 115,
-      sorter: (a: FacilityRow, b: FacilityRow) => {
-        if (!a.lastBookingDate && !b.lastBookingDate) return 0;
-        if (!a.lastBookingDate) return 1;
-        if (!b.lastBookingDate) return -1;
-        return new Date(a.lastBookingDate).getTime() - new Date(b.lastBookingDate).getTime();
-      },
-      render: (date: string | null) => (
-        <span style={{ color: date ? '#434343' : '#bfbfbf', fontSize: 13 }}>
-          {formatLastBooking(date)}
-        </span>
-      ),
+      width: 80,
     },
     {
       title: 'Action',
       key: 'actions',
-      width: 140,
+      width: 110,
       align: 'center' as const,
       render: (_: any, record: FacilityRow) => (
-        <Space size="small">
+        <Space size={2}>
           <Button
-            type="link"
+            type="text"
             size="small"
-            icon={<EyeOutlined />}
+            icon={<EyeOutlined style={{ color: '#00C27A' }} />}
             onClick={() => navigate(`/facilities/${record._id}`)}
-            style={{ padding: 0 }}
+            style={{ color: '#00C27A', fontWeight: 500, padding: '0 4px' }}
           >
             View
           </Button>
           <Button
-            type="link"
+            type="text"
             size="small"
-            icon={<EditOutlined />}
+            icon={<EditOutlined style={{ color: '#6B7280' }} />}
             onClick={() => {
               setEditTarget({
                 _id: record._id,
@@ -206,7 +200,7 @@ export const FacilitiesListPage: React.FC = () => {
               });
               setIsModalOpen(true);
             }}
-            style={{ padding: 0 }}
+            style={{ color: '#6B7280', padding: '0 4px' }}
           >
             Edit
           </Button>
@@ -216,44 +210,46 @@ export const FacilitiesListPage: React.FC = () => {
   ];
 
   return (
-    <div>
+    <div style={{ maxWidth: 1280, margin: '0 auto' }}>
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: 16,
+          marginBottom: 24,
         }}
       >
         <div>
-          <Title level={3} style={{ margin: 0 }}>
+          <Title level={2} style={{ margin: 0, fontSize: 26, fontWeight: 700, color: '#111827' }}>
             Facilities Directory
           </Title>
-          <Typography.Text type="secondary">
+          <Text type="secondary" style={{ fontSize: 14, color: '#6B7280' }}>
             Manage onboarding, subscription status, and tenant performance
-          </Typography.Text>
+          </Text>
         </div>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           size="large"
           onClick={() => setIsModalOpen(true)}
+          style={{ backgroundColor: '#00C27A', borderColor: '#00C27A', height: 44, borderRadius: 10, fontWeight: 600 }}
         >
           Add Facility
         </Button>
       </div>
 
-      <Card style={{ marginBottom: 16, borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+      {/* Top Filter Bar Layered Surface */}
+      <Card className="hrkt-card" bodyStyle={{ padding: 16 }} style={{ marginBottom: 20, background: '#F8FAFC', border: '1px solid #E5E7EB' }}>
         <Space wrap size="middle">
           <Input
             placeholder="Search by name or city..."
-            prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+            prefix={<SearchOutlined style={{ color: '#9CA3AF' }} />}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            style={{ width: 260 }}
+            style={{ width: 280, borderRadius: 8, height: 40 }}
             allowClear
           />
           <Select
@@ -264,7 +260,7 @@ export const FacilitiesListPage: React.FC = () => {
               setPage(1);
             }}
             allowClear
-            style={{ width: 160 }}
+            style={{ width: 170, height: 40 }}
             options={[
               { value: 'active', label: 'Status: Active' },
               { value: 'inactive', label: 'Status: Inactive' },
@@ -279,7 +275,7 @@ export const FacilitiesListPage: React.FC = () => {
               setPage(1);
             }}
             allowClear
-            style={{ width: 190 }}
+            style={{ width: 200, height: 40 }}
             options={[
               { value: 'active', label: 'Subscription: Active' },
               { value: 'trial', label: 'Subscription: Trial' },
@@ -287,16 +283,46 @@ export const FacilitiesListPage: React.FC = () => {
               { value: 'cancelled', label: 'Subscription: Cancelled' },
             ]}
           />
+          <Select
+            placeholder="Sort by"
+            value={sortBy}
+            onChange={(val) => setSortBy(val)}
+            allowClear
+            style={{ width: 190, height: 40 }}
+            options={[
+              { value: 'revenue_desc', label: 'Sort: Highest Revenue' },
+              { value: 'revenue_asc', label: 'Sort: Lowest Revenue' },
+              { value: 'bookings_desc', label: 'Sort: Most Bookings' },
+              { value: 'name_asc', label: 'Sort: Name (A-Z)' },
+            ]}
+          />
+          {(search || statusFilter || subStatusFilter || sortBy) && (
+            <Button
+              icon={<ClearOutlined />}
+              onClick={() => {
+                setSearch('');
+                setStatusFilter(undefined);
+                setSubStatusFilter(undefined);
+                setSortBy(undefined);
+                setPage(1);
+              }}
+              style={{ borderRadius: 8, height: 40 }}
+            >
+              Clear Filters
+            </Button>
+          )}
         </Space>
       </Card>
 
-      <Card bodyStyle={{ padding: 0 }} style={{ borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+      {/* Table Card */}
+      <Card className="hrkt-card" bodyStyle={{ padding: 0 }} style={{ overflow: 'hidden' }}>
         <Table
-          dataSource={data}
+          dataSource={sortedData}
           columns={columns}
           rowKey="_id"
           loading={loading}
-          size="middle"
+          size="small"
+          scroll={{ x: 'max-content' }}
           pagination={{
             current: page,
             total,
@@ -304,7 +330,7 @@ export const FacilitiesListPage: React.FC = () => {
             onChange: (p) => setPage(p),
             showSizeChanger: false,
             showTotal: (t) => `Total ${t} facilities`,
-            style: { padding: '12px 24px', margin: 0 },
+            style: { padding: '16px 24px', margin: 0 },
           }}
         />
       </Card>

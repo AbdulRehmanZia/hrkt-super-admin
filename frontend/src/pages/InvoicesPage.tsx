@@ -3,16 +3,13 @@ import {
   Typography,
   Card,
   Table,
-  Tag,
   Button,
   Input,
   Select,
   Row,
   Col,
-  Statistic,
   Space,
   Drawer,
-  Popconfirm,
   message,
   Tooltip,
   Alert,
@@ -86,10 +83,17 @@ interface BreakdownData {
   };
 }
 
-const statusColors: Record<string, string> = {
-  paid: 'green',
-  due: 'gold',
-  overdue: 'red',
+const getInvoiceStatusBadge = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'paid':
+      return <span className="hrkt-badge hrkt-badge-green">PAID</span>;
+    case 'overdue':
+      return <span className="hrkt-badge hrkt-badge-red">OVERDUE</span>;
+    case 'due':
+      return <span className="hrkt-badge hrkt-badge-blue">DUE</span>;
+    default:
+      return <span className="hrkt-badge hrkt-badge-gray">{status.toUpperCase()}</span>;
+  }
 };
 
 export const InvoicesPage: React.FC = () => {
@@ -109,12 +113,10 @@ export const InvoicesPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
 
-  // Itemized Breakdown Drawer state
   const [breakdownVisible, setBreakdownVisible] = useState(false);
   const [breakdownData, setBreakdownData] = useState<BreakdownData | null>(null);
   const [breakdownLoading, setBreakdownLoading] = useState(false);
 
-  // Action Loading states
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
 
@@ -140,9 +142,8 @@ export const InvoicesPage: React.FC = () => {
     fetchInvoices(page, search, statusFilter);
   }, [page, search, statusFilter, token]);
 
-  // Open Itemized Breakdown Drawer
   const handleOpenBreakdown = async (id: string) => {
-    setBreakdownData(null); // Clear stale previous state
+    setBreakdownData(null);
     setBreakdownVisible(true);
     setBreakdownLoading(true);
     try {
@@ -155,7 +156,6 @@ export const InvoicesPage: React.FC = () => {
     }
   };
 
-  // Send Payment Reminder (with 24h Cooldown Validation & Modal Notification)
   const handleSendReminder = async (id: string) => {
     setSendingReminderId(id);
     try {
@@ -173,7 +173,29 @@ export const InvoicesPage: React.FC = () => {
     }
   };
 
-  // Mark Invoice as Paid
+  const showMarkAsPaidConfirm = (r: InvoiceRow) => {
+    const facilityName = r.facility?.name || (r.facilityId as any)?.name || 'Facility';
+    Modal.confirm({
+      title: 'Confirm Financial Status Change',
+      icon: <ExclamationCircleOutlined style={{ color: '#00C27A' }} />,
+      content: (
+        <div>
+          <Paragraph style={{ margin: 0 }}>
+            Are you sure you want to mark the invoice for <strong>{facilityName}</strong> ({r.periodMonth}) as <strong>PAID</strong>?
+          </Paragraph>
+          <div style={{ marginTop: 8, padding: 8, background: '#f5f5f5', borderRadius: 6, fontSize: 13 }}>
+            <div><strong>Amount Due:</strong> PKR {r.amountDue.toLocaleString()}</div>
+            <div><strong>Due Date:</strong> {new Date(r.dueDate).toLocaleDateString('en-PK')}</div>
+          </div>
+        </div>
+      ),
+      okText: 'Confirm & Mark Paid',
+      okType: 'primary',
+      cancelText: 'Cancel',
+      onOk: () => handleMarkAsPaid(r._id),
+    });
+  };
+
   const handleMarkAsPaid = async (id: string) => {
     setPayingId(id);
     try {
@@ -187,7 +209,6 @@ export const InvoicesPage: React.FC = () => {
     }
   };
 
-  // Helper function to check if reminder is on 24h cooldown
   const getCooldownStatus = (lastReminderSentAt?: string) => {
     if (!lastReminderSentAt) return { isCooldown: false, remainingHours: 0 };
     const now = new Date();
@@ -213,10 +234,10 @@ export const InvoicesPage: React.FC = () => {
       key: 'facility',
       render: (_: any, r: InvoiceRow) => (
         <div>
-          <Text strong style={{ fontSize: 14 }}>
+          <Text strong style={{ fontSize: 14, color: '#111827' }}>
             {r.facility?.name || (r.facilityId as any)?.name || 'Unknown Facility'}
           </Text>
-          <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+          <div style={{ fontSize: 12, color: '#6B7280' }}>
             <BankOutlined style={{ marginRight: 4 }} /> {r.facility?.city || (r.facilityId as any)?.city || 'Pakistan'}
           </div>
         </div>
@@ -227,9 +248,7 @@ export const InvoicesPage: React.FC = () => {
       dataIndex: 'periodMonth',
       key: 'periodMonth',
       render: (m: string) => (
-        <Tag color="blue" style={{ fontWeight: 600 }}>
-          {m}
-        </Tag>
+        <span className="hrkt-badge hrkt-badge-blue">{m}</span>
       ),
     },
     {
@@ -237,10 +256,10 @@ export const InvoicesPage: React.FC = () => {
       key: 'amountDue',
       render: (_: any, r: InvoiceRow) => (
         <div>
-          <Text strong style={{ fontSize: 15, color: '#1f1f1f' }}>
+          <Text strong style={{ fontSize: 15, color: '#111827' }}>
             PKR {r.amountDue.toLocaleString()}
           </Text>
-          <div style={{ fontSize: 12, color: r.amountPaid >= r.amountDue ? '#52c41a' : '#8c8c8c' }}>
+          <div style={{ fontSize: 12, color: r.amountPaid >= r.amountDue ? '#15803D' : '#6B7280' }}>
             Paid: PKR {r.amountPaid.toLocaleString()}
           </div>
         </div>
@@ -250,17 +269,13 @@ export const InvoicesPage: React.FC = () => {
       title: 'Due Date',
       dataIndex: 'dueDate',
       key: 'dueDate',
-      render: (dt: string) => new Date(dt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }),
+      render: (dt: string) => <Text style={{ color: '#4B5563' }}>{new Date(dt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>,
     },
     {
       title: 'Payment Status',
       dataIndex: 'status',
       key: 'status',
-      render: (st: string) => (
-        <Tag color={statusColors[st] || 'default'} style={{ fontWeight: 700, padding: '2px 10px', textTransform: 'uppercase' }}>
-          {st}
-        </Tag>
-      ),
+      render: (st: string) => getInvoiceStatusBadge(st),
     },
     {
       title: 'Actions',
@@ -271,18 +286,18 @@ export const InvoicesPage: React.FC = () => {
 
         return (
           <Space>
-            {/* Itemized Breakdown Button */}
             <Tooltip title="View formula itemized billing breakdown">
               <Button
                 size="small"
-                icon={<FileTextOutlined />}
+                type="text"
+                icon={<FileTextOutlined style={{ color: '#6B7280' }} />}
                 onClick={() => handleOpenBreakdown(r._id)}
+                style={{ color: '#6B7280', fontWeight: 500 }}
               >
                 Breakdown
               </Button>
             </Tooltip>
 
-            {/* Send Reminder (with 24h Cooldown Rule) */}
             {r.status !== 'paid' && (
               <Tooltip
                 title={
@@ -293,29 +308,29 @@ export const InvoicesPage: React.FC = () => {
               >
                 <Button
                   size="small"
-                  icon={<NotificationOutlined />}
+                  type="text"
+                  icon={<NotificationOutlined style={{ color: cooldown.isCooldown ? '#9CA3AF' : '#F59E0B' }} />}
                   disabled={cooldown.isCooldown}
                   loading={sendingReminderId === r._id}
                   onClick={() => handleSendReminder(r._id)}
+                  style={{ color: cooldown.isCooldown ? '#9CA3AF' : '#B45309', fontWeight: 500 }}
                 >
                   {cooldown.isCooldown ? `Cooldown (${cooldown.remainingHours}h)` : 'Send Reminder'}
                 </Button>
               </Tooltip>
             )}
 
-            {/* Mark as Paid Action */}
             {r.status !== 'paid' && (
-              <Popconfirm
-                title="Mark Invoice as Paid?"
-                description={`Confirm payment of PKR ${r.amountDue.toLocaleString()} for ${r.facility?.name || (r.facilityId as any)?.name}?`}
-                onConfirm={() => handleMarkAsPaid(r._id)}
-                okText="Yes, Mark Paid"
-                cancelText="Cancel"
+              <Button
+                size="small"
+                type="primary"
+                icon={<CheckCircleOutlined />}
+                loading={payingId === r._id}
+                onClick={() => showMarkAsPaidConfirm(r)}
+                style={{ backgroundColor: '#00C27A', borderColor: '#00C27A', fontWeight: 600 }}
               >
-                <Button size="small" type="primary" icon={<CheckCircleOutlined />} loading={payingId === r._id}>
-                  Mark Paid
-                </Button>
-              </Popconfirm>
+                Mark Paid
+              </Button>
             )}
           </Space>
         );
@@ -324,78 +339,95 @@ export const InvoicesPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <Title level={2} style={{ margin: 0 }}>
+    <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+      <div style={{ marginBottom: 28 }}>
+        <Title level={2} style={{ margin: 0, fontSize: 26, fontWeight: 700, color: '#111827' }}>
           Platform Billing & Invoices
         </Title>
-        <Text type="secondary">
+        <Text type="secondary" style={{ fontSize: 14, color: '#6B7280' }}>
           Track subscription invoices, itemized formula breakdowns, payment statuses, and 24-hour reminder cooldowns
         </Text>
       </div>
 
-      {/* Summary KPI Cards */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      <Row gutter={[20, 20]} style={{ marginBottom: 28 }}>
         <Col xs={24} sm={12} lg={8}>
-          <Card style={{ borderRadius: 8 }} styles={{ body: { padding: 20 } }}>
-            <Statistic
-              title="Overdue Outstanding Revenue"
-              value={summary.totalOverdueRevenue}
-              precision={0}
-              suffix="PKR"
-              styles={{ content: { color: '#cf1322', fontWeight: 700 } }}
-              prefix={<ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />}
-            />
-            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+          <Card className="hrkt-card hrkt-card-hover" bodyStyle={{ padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <Text style={{ fontSize: 13, fontWeight: 500, color: '#6B7280' }}>Overdue Outstanding Revenue</Text>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#EF4444', marginTop: 8, marginBottom: 6 }}>
+                  PKR {summary.totalOverdueRevenue.toLocaleString()}
+                </div>
+              </div>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ExclamationCircleOutlined style={{ fontSize: 22, color: '#EF4444' }} />
+              </div>
+            </div>
+            <Text type="secondary" style={{ fontSize: 12, color: '#6B7280', marginTop: 4, display: 'block' }}>
               {summary.overdueCount} overdue invoice(s) pending collection
             </Text>
           </Card>
         </Col>
 
         <Col xs={24} sm={12} lg={8}>
-          <Card style={{ borderRadius: 8 }} styles={{ body: { padding: 20 } }}>
-            <Statistic
-              title="Total Collected Revenue"
-              value={summary.totalPaidRevenue}
-              precision={0}
-              suffix="PKR"
-              styles={{ content: { color: '#389e0d', fontWeight: 700 } }}
-              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-            />
-            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
-              {summary.paidCount} invoice(s) fully settled
+          <Card className="hrkt-card hrkt-card-hover" bodyStyle={{ padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <Text style={{ fontSize: 13, fontWeight: 500, color: '#6B7280' }}>Total Collected Revenue</Text>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#00C27A', marginTop: 8, marginBottom: 6 }}>
+                  PKR {summary.totalPaidRevenue.toLocaleString()}
+                </div>
+              </div>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: '#E8FFF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckCircleOutlined style={{ fontSize: 22, color: '#00C27A' }} />
+              </div>
+            </div>
+            <Text type="secondary" style={{ fontSize: 12, color: '#6B7280', marginTop: 4, display: 'block' }}>
+              {summary.paidCount} paid invoice(s) settled
             </Text>
           </Card>
         </Col>
 
         <Col xs={24} sm={12} lg={8}>
-          <Card style={{ borderRadius: 8 }} styles={{ body: { padding: 20 } }}>
-            <Statistic
-              title="Pending Invoices"
-              value={summary.dueCount + summary.overdueCount}
-              styles={{ content: { color: '#d46b08', fontWeight: 700 } }}
-              prefix={<ClockCircleOutlined style={{ color: '#fa8c16' }} />}
-            />
-            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
-              {summary.dueCount} Due · {summary.overdueCount} Overdue
+          <Card className="hrkt-card hrkt-card-hover" bodyStyle={{ padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <Text style={{ fontSize: 13, fontWeight: 500, color: '#6B7280' }}>Current Month Pending Due</Text>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#1D4ED8', marginTop: 8, marginBottom: 6 }}>
+                  {summary.dueCount} invoices
+                </div>
+              </div>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ClockCircleOutlined style={{ fontSize: 22, color: '#1D4ED8' }} />
+              </div>
+            </div>
+            <Text type="secondary" style={{ fontSize: 12, color: '#6B7280', marginTop: 4, display: 'block' }}>
+              Pending invoices active in current billing cycle
             </Text>
           </Card>
         </Col>
       </Row>
 
-      {/* Filter Controls & Table */}
-      <Card style={{ borderRadius: 8 }}>
-        <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+      <Card className="hrkt-card" bodyStyle={{ padding: 0 }} style={{ overflow: 'hidden' }}>
+        <div
+          style={{
+            padding: '18px 24px',
+            borderBottom: '1px solid #E5E7EB',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            flexWrap: 'wrap',
+          }}
+        >
           <Input
-            placeholder="Search by facility name, city, or month..."
-            prefix={<SearchOutlined />}
+            placeholder="Search by facility name, city, or month (YYYY-MM)..."
+            prefix={<SearchOutlined style={{ color: '#9CA3AF' }} />}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            style={{ width: 320 }}
+            style={{ width: 320, borderRadius: 8, height: 40 }}
             allowClear
           />
 
@@ -407,7 +439,7 @@ export const InvoicesPage: React.FC = () => {
               setPage(1);
             }}
             allowClear
-            style={{ width: 180 }}
+            style={{ width: 190, height: 40 }}
             options={[
               { value: 'due', label: 'DUE' },
               { value: 'overdue', label: 'OVERDUE' },
@@ -419,6 +451,7 @@ export const InvoicesPage: React.FC = () => {
             <Button
               icon={<ClearOutlined />}
               onClick={handleClearFilters}
+              style={{ borderRadius: 8, height: 40 }}
             >
               Clear Filters
             </Button>
@@ -430,17 +463,18 @@ export const InvoicesPage: React.FC = () => {
           columns={columns}
           rowKey="_id"
           loading={loading}
+          scroll={{ x: 950 }}
           pagination={{
             current: page,
             total,
             pageSize: 10,
             onChange: (p) => setPage(p),
             showTotal: (t) => `Total ${t} platform invoices`,
+            style: { padding: '16px 24px', margin: 0 },
           }}
         />
       </Card>
 
-      {/* Itemized Payment Breakdown Drawer (Formula Requirement P1) */}
       <Drawer
         title="Itemized Payment Breakdown"
         placement="right"
@@ -450,7 +484,7 @@ export const InvoicesPage: React.FC = () => {
       >
         {breakdownLoading || !breakdownData ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 50 }}>
-            <Typography.Text type="secondary">Loading formula breakdown...</Typography.Text>
+            <Text type="secondary">Loading formula breakdown...</Text>
           </div>
         ) : (
           <div>
@@ -459,68 +493,65 @@ export const InvoicesPage: React.FC = () => {
               description={`Facility: ${(breakdownData.invoice.facilityId as any)?.name || breakdownData.facilityName || breakdownData.facility?.name || breakdownData.invoice.facility?.name || 'Facility Venue'} (${breakdownData.invoice.periodMonth})`}
               type="info"
               showIcon
-              style={{ marginBottom: 20 }}
+              style={{ marginBottom: 20, borderRadius: 10 }}
             />
 
-            <Title level={4} style={{ marginBottom: 16 }}>
+            <Title level={4} style={{ marginBottom: 12, color: '#111827' }}>
               Billing Formula Breakdown
             </Title>
-            <Paragraph type="secondary" style={{ fontSize: 13 }}>
+            <Paragraph type="secondary" style={{ fontSize: 13, color: '#6B7280' }}>
               Total Invoice = Base Plan Fee + (Courts Count x PKR 1,500) + (Bookings Count x PKR 50)
             </Paragraph>
 
-            <div style={{ background: '#fafafa', padding: 16, borderRadius: 8, border: '1px solid #f0f0f0', marginBottom: 20 }}>
-              {/* Line 1: Base Fee */}
+            <div style={{ background: '#F9FAFB', padding: 18, borderRadius: 12, border: '1px solid #E5E7EB', marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div>
-                  <Text strong style={{ display: 'block' }}>1. Subscription Plan Base Fee</Text>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
+                  <Text strong style={{ display: 'block', color: '#111827' }}>1. Subscription Plan Base Fee</Text>
+                  <Text type="secondary" style={{ fontSize: 12, color: '#6B7280' }}>
                     Plan: {breakdownData.itemized.monthlyBaseFee.plan.toUpperCase()}
                   </Text>
                 </div>
-                <Text strong style={{ fontSize: 15 }}>
+                <Text strong style={{ fontSize: 15, color: '#111827' }}>
                   PKR {breakdownData.itemized.monthlyBaseFee.amount.toLocaleString()}
                 </Text>
               </div>
 
-              {/* Line 2: Court Usage Charge */}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div>
-                  <Text strong style={{ display: 'block' }}>2. Court Usage Fee</Text>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
+                  <Text strong style={{ display: 'block', color: '#111827' }}>2. Court Usage Fee</Text>
+                  <Text type="secondary" style={{ fontSize: 12, color: '#6B7280' }}>
                     {breakdownData.itemized.courtUsage.courtCount} Courts x PKR {breakdownData.itemized.courtUsage.ratePerCourt.toLocaleString()}
                   </Text>
                 </div>
-                <Text strong style={{ fontSize: 15 }}>
+                <Text strong style={{ fontSize: 15, color: '#111827' }}>
                   PKR {breakdownData.itemized.courtUsage.amount.toLocaleString()}
                 </Text>
               </div>
 
-              {/* Line 3: Booking Platform Usage Fee */}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div>
-                  <Text strong style={{ display: 'block' }}>3. Per-Booking Platform Fee</Text>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
+                  <Text strong style={{ display: 'block', color: '#111827' }}>3. Per-Booking Platform Fee</Text>
+                  <Text type="secondary" style={{ fontSize: 12, color: '#6B7280' }}>
                     {breakdownData.itemized.bookingUsage.bookingsCount} Bookings x PKR {breakdownData.itemized.bookingUsage.ratePerBooking}
                   </Text>
                 </div>
-                <Text strong style={{ fontSize: 15 }}>
+                <Text strong style={{ fontSize: 15, color: '#111827' }}>
                   PKR {breakdownData.itemized.bookingUsage.amount.toLocaleString()}
                 </Text>
               </div>
 
-              <div style={{ borderTop: '2px solid #e8e8e8', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text strong style={{ fontSize: 16 }}>Calculated Total Amount</Text>
-                <Text strong style={{ fontSize: 18, color: '#1677ff' }}>
+              <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text strong style={{ fontSize: 16, color: '#111827' }}>Calculated Total Amount</Text>
+                <Text strong style={{ fontSize: 18, color: '#00C27A' }}>
                   PKR {breakdownData.itemized.totalCalculated.toLocaleString()}
                 </Text>
               </div>
             </div>
 
-            <div style={{ padding: 12, background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 8 }}>
+            <div style={{ padding: 14, background: '#E8FFF5', border: '1px solid #6EE7B7', borderRadius: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text strong>Current Invoice Amount Due:</Text>
-                <Text strong style={{ color: '#389e0d' }}>
+                <Text strong style={{ color: '#065F46' }}>Current Invoice Amount Due:</Text>
+                <Text strong style={{ color: '#00C27A', fontSize: 16 }}>
                   PKR {breakdownData.itemized.invoiceAmountDue.toLocaleString()}
                 </Text>
               </div>
