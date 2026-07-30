@@ -12,6 +12,7 @@ import {
   SubscriptionStatus,
   InvoiceStatus,
 } from './schemas';
+import { PLAN_BASE_FEES, BILLING_RATES } from './config/billing.config';
 
 async function seed() {
   const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/hrkt-admin';
@@ -42,18 +43,18 @@ async function seed() {
     updatedAt: new Date(),
   });
 
-  // 2. Facilities Data Definition
+  // 2. Facilities Data Definition (Realistic distribution across Starter, Pro, Enterprise)
   const facilityConfigs = [
-    { name: 'Smash Padel Club', city: 'Lahore', status: FacilityStatus.ACTIVE, courtLimit: 6, plan: 'pro', fee: 15000 },
-    { name: 'Futsal Arena Central', city: 'Karachi', status: FacilityStatus.ACTIVE, courtLimit: 4, plan: 'starter', fee: 10000 },
-    { name: 'Tennis Hub Capital', city: 'Islamabad', status: FacilityStatus.ACTIVE, courtLimit: 8, plan: 'enterprise', fee: 25000 },
-    { name: 'Padel Prime West', city: 'Rawalpindi', status: FacilityStatus.ACTIVE, courtLimit: 5, plan: 'pro', fee: 15000 },
-    { name: 'Apex Sports Complex', city: 'Multan', status: FacilityStatus.ACTIVE, courtLimit: 4, plan: 'starter', fee: 10000 },
-    { name: 'Velocity Padel Court', city: 'Faisalabad', status: FacilityStatus.SUSPENDED, courtLimit: 3, plan: 'starter', fee: 10000 },
-    { name: 'Legends Cricket Net', city: 'Peshawar', status: FacilityStatus.ACTIVE, courtLimit: 5, plan: 'pro', fee: 15000 },
-    { name: 'Urban Futsal Park', city: 'Sialkot', status: FacilityStatus.INACTIVE, courtLimit: 4, plan: 'starter', fee: 10000 },
-    { name: 'Metro Padel Arena', city: 'Gujranwala', status: FacilityStatus.ACTIVE, courtLimit: 6, plan: 'pro', fee: 15000 },
-    { name: 'Elite Sports Club', city: 'Quetta', status: FacilityStatus.ACTIVE, courtLimit: 4, plan: 'starter', fee: 10000 },
+    { name: 'Smash Padel Club', city: 'Lahore', status: FacilityStatus.ACTIVE, courtLimit: 6, plan: 'pro' },
+    { name: 'Futsal Arena Central', city: 'Karachi', status: FacilityStatus.ACTIVE, courtLimit: 4, plan: 'starter' },
+    { name: 'Tennis Hub Capital', city: 'Islamabad', status: FacilityStatus.ACTIVE, courtLimit: 8, plan: 'enterprise' },
+    { name: 'Padel Prime West', city: 'Rawalpindi', status: FacilityStatus.ACTIVE, courtLimit: 5, plan: 'pro' },
+    { name: 'Apex Sports Complex', city: 'Multan', status: FacilityStatus.ACTIVE, courtLimit: 4, plan: 'starter' },
+    { name: 'Velocity Padel Court', city: 'Faisalabad', status: FacilityStatus.SUSPENDED, courtLimit: 3, plan: 'starter' },
+    { name: 'Legends Cricket Net', city: 'Peshawar', status: FacilityStatus.ACTIVE, courtLimit: 5, plan: 'pro' },
+    { name: 'Urban Futsal Park', city: 'Sialkot', status: FacilityStatus.INACTIVE, courtLimit: 4, plan: 'starter' },
+    { name: 'Metro Padel Arena', city: 'Gujranwala', status: FacilityStatus.ACTIVE, courtLimit: 6, plan: 'pro' },
+    { name: 'Elite Sports Club', city: 'Quetta', status: FacilityStatus.ACTIVE, courtLimit: 4, plan: 'starter' },
   ];
 
   console.log('Seeding Facilities, Courts, Users, Rules, Discounts, Subscriptions & Invoices...');
@@ -122,12 +123,13 @@ async function seed() {
     ]);
 
     // Create Subscription
+    const monthlyBaseFee = PLAN_BASE_FEES[cfg.plan] || PLAN_BASE_FEES['pro'];
     const subStatus = cfg.status === FacilityStatus.SUSPENDED ? SubscriptionStatus.PAST_DUE : SubscriptionStatus.ACTIVE;
     await db.collection('subscriptions').insertOne({
       facilityId,
       plan: cfg.plan,
       status: subStatus,
-      monthlyBaseFee: cfg.fee,
+      monthlyBaseFee,
       startedAt: new Date('2026-01-15T00:00:00Z'),
       renewsAt: new Date('2026-08-15T00:00:00Z'),
       createdAt: new Date(),
@@ -138,7 +140,7 @@ async function seed() {
     for (const m of months) {
       const isPast = m < '2026-07';
       const invStatus = isPast ? InvoiceStatus.PAID : cfg.status === FacilityStatus.SUSPENDED ? InvoiceStatus.OVERDUE : InvoiceStatus.DUE;
-      const amountDue = cfg.fee + numCourts * 1500;
+      const amountDue = monthlyBaseFee + numCourts * BILLING_RATES.PER_COURT_FEE;
       await db.collection('invoices').insertOne({
         facilityId,
         periodMonth: m,
@@ -174,7 +176,10 @@ async function seed() {
       continue;
     }
 
-    const totalBookingsToSeed = 85;
+    // Dynamic booking count per facility for realistic data variation across the platform
+    // Small facilities get ~45-60 bookings, large facilities get ~90-130 bookings
+    const totalBookingsToSeed = 45 + (idx * 13) % 85;
+
     for (let b = 0; b < totalBookingsToSeed; b++) {
       const courtId = courtIds[b % courtIds.length];
       const customerId = customerIds[b % customerIds.length];
@@ -184,11 +189,35 @@ async function seed() {
       const startTime = new Date(now.getTime() - randomDaysAgo * 24 * 60 * 60 * 1000);
       const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hr booking
 
-      const totalAmount = 3000;
-      const paymentStatus = b % 5 === 0 ? PaymentStatus.UNPAID : b % 7 === 0 ? PaymentStatus.PARTIALLY_PAID : PaymentStatus.FULLY_PAID;
-      const amountPaid = paymentStatus === PaymentStatus.FULLY_PAID ? totalAmount : paymentStatus === PaymentStatus.PARTIALLY_PAID ? 1500 : 0;
-      const source = b % 3 === 0 ? BookingSource.BOT : b % 2 === 0 ? BookingSource.PORTAL : BookingSource.WEB;
-      const status = b % 10 === 0 ? BookingStatus.CANCELLED : randomDaysAgo > 1 ? BookingStatus.COMPLETED : BookingStatus.CONFIRMED;
+      // Vary rates: 2500 - 4500 PKR depending on court and index
+      const totalAmount = 2500 + ((b + idx) % 5) * 500;
+      const paymentStatus =
+        (b + idx) % 6 === 0
+          ? PaymentStatus.UNPAID
+          : (b + idx) % 8 === 0
+          ? PaymentStatus.PARTIALLY_PAID
+          : PaymentStatus.FULLY_PAID;
+
+      const amountPaid =
+        paymentStatus === PaymentStatus.FULLY_PAID
+          ? totalAmount
+          : paymentStatus === PaymentStatus.PARTIALLY_PAID
+          ? Math.round(totalAmount / 2)
+          : 0;
+
+      const source =
+        (b + idx) % 3 === 0
+          ? BookingSource.BOT
+          : (b + idx) % 2 === 0
+          ? BookingSource.PORTAL
+          : BookingSource.WEB;
+
+      const status =
+        (b + idx) % 9 === 0
+          ? BookingStatus.CANCELLED
+          : randomDaysAgo > 1
+          ? BookingStatus.COMPLETED
+          : BookingStatus.CONFIRMED;
 
       await db.collection('bookings').insertOne({
         facilityId,

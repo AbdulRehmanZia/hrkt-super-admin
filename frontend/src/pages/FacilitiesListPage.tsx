@@ -4,6 +4,7 @@ import { PlusOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { CreateFacilityModal } from '../components/CreateFacilityModal';
 
 const { Title } = Typography;
 
@@ -61,6 +62,9 @@ export const FacilitiesListPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [subStatusFilter, setSubStatusFilter] = useState<string | undefined>(undefined);
+
+  // Modal open state
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchFacilities = async (p: number, s?: string, st?: string, sub?: string) => {
     setLoading(true);
@@ -203,7 +207,12 @@ export const FacilitiesListPage: React.FC = () => {
             Manage onboarding, subscription status, and tenant performance
           </Typography.Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} size="large">
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          size="large"
+          onClick={() => setIsModalOpen(true)}
+        >
           Add Facility
         </Button>
       </div>
@@ -273,6 +282,16 @@ export const FacilitiesListPage: React.FC = () => {
           }}
         />
       </Card>
+
+      {/* Onboard Facility Modal Component */}
+      <CreateFacilityModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          fetchFacilities(page, search, statusFilter, subStatusFilter);
+        }}
+      />
     </div>
   );
 };

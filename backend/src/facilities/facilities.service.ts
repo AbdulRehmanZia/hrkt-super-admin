@@ -1,13 +1,103 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Facility, FacilityDocument } from '../schemas';
+
+import * as bcrypt from 'bcrypt';
+import {
+  Facility,
+  FacilityDocument,
+  FacilityStatus,
+  User,
+  UserDocument,
+  UserRole,
+  UserStatus,
+  Subscription,
+  SubscriptionDocument,
+  SubscriptionStatus,
+  Invoice,
+  InvoiceDocument,
+  InvoiceStatus,
+} from '../schemas';
+import { CreateFacilityDto } from './dto/create-facility.dto';
+import { PLAN_BASE_FEES } from '../config/billing.config';
 
 @Injectable()
 export class FacilitiesService {
   constructor(
     @InjectModel(Facility.name) private facilityModel: Model<FacilityDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Subscription.name)
+    private subscriptionModel: Model<SubscriptionDocument>,
+    @InjectModel(Invoice.name) private invoiceModel: Model<InvoiceDocument>,
   ) {}
+
+  async create(dto: CreateFacilityDto) {
+    const cleanEmail = dto.adminEmail.toLowerCase().trim();
+    const plan = dto.subscriptionPlan.toLowerCase().trim();
+    const monthlyBaseFee = PLAN_BASE_FEES[plan] || PLAN_BASE_FEES['pro'];
+
+    // Step 1: Check for email uniqueness collision before making changes
+    const existingUser = await this.userModel.findOne({ email: cleanEmail }).exec();
+    if (existingUser) {
+      throw new ConflictException('A user with this email address already exists');
+    }
+
+    // Step 2: Create Facility document
+    const facility = await this.facilityModel.create({
+      name: dto.name.trim(),
+      city: dto.city.trim(),
+      courtLimit: dto.courtLimit,
+      status: FacilityStatus.ACTIVE,
+    });
+
+    // Step 3: Generate a secure temporary password for the new admin user
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const tempPassword = `HrktAdmin#${randomSuffix}`;
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+    // Step 4: Create first admin User associated with this facility
+    const adminUser = await this.userModel.create({
+      facilityId: facility._id,
+      name: dto.adminName.trim(),
+      email: cleanEmail,
+      password: hashedPassword,
+      role: UserRole.FACILITY_ADMIN,
+      status: UserStatus.ACTIVE,
+    });
+
+    // Step 5: Auto-create initial 30-day Trial Subscription with selected plan fee
+    const now = new Date();
+    const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    await this.subscriptionModel.create({
+      facilityId: facility._id,
+      plan,
+      status: SubscriptionStatus.TRIAL,
+      monthlyBaseFee,
+      startedAt: now,
+      renewsAt: thirtyDaysLater,
+    });
+
+    // Step 6: Auto-create initial Invoice
+    const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    await this.invoiceModel.create({
+      facilityId: facility._id,
+      periodMonth: currentPeriod,
+      amountDue: monthlyBaseFee,
+      amountPaid: 0,
+      dueDate: thirtyDaysLater,
+      status: InvoiceStatus.DUE,
+    });
+
+    return {
+      facility,
+      admin: {
+        id: adminUser._id.toString(),
+        name: adminUser.name,
+        email: adminUser.email,
+        tempPassword, // Returned once so Super Admin can copy/share it
+      },
+    };
+  }
 
   async findAll(query: {
     page?: number;
@@ -93,17 +183,13 @@ export class FacilitiesService {
             $ifNull: [{ $arrayElemAt: ['$subscription.plan', 0] }, 'none'],
           },
           totalRevenue: { $sum: '$bookings.amountPaid' },
-          // lifetimeBookings = total count of all bookings (not just this month)
           lifetimeBookings: { $size: '$bookings' },
-          // lastBookingDate = the most recent startTime across all bookings
-          // $max returns null if array is empty — frontend shows "Never" for null
           lastBookingDate: { $max: '$bookings.startTime' },
         },
       },
     );
 
     // Step 2: If subscriptionStatus filter is set, apply it AFTER $lookup
-    // (subscription is a joined field — can't filter on it before $lookup)
     if (query.subscriptionStatus) {
       pipeline.push({
         $match: { subscriptionStatus: query.subscriptionStatus },

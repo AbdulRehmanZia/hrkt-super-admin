@@ -1,11 +1,17 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import { FacilitiesService } from './facilities.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CreateFacilityDto } from './dto/create-facility.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('facilities')
 export class FacilitiesController {
   constructor(private readonly facilitiesService: FacilitiesService) {}
+
+  @Post()
+  async create(@Body() createFacilityDto: CreateFacilityDto) {
+    return this.facilitiesService.create(createFacilityDto);
+  }
 
   @Get()
   async findAll(
