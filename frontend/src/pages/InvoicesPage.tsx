@@ -280,7 +280,7 @@ export const InvoicesPage: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      align: 'right' as const,
+      align: 'center' as const,
       render: (_: any, r: InvoiceRow) => {
         const cooldown = getCooldownStatus(r.lastReminderSentAt);
 
@@ -439,7 +439,7 @@ export const InvoicesPage: React.FC = () => {
               setPage(1);
             }}
             allowClear
-            style={{ width: 190, height: 40 }}
+            style={{ width: 245, height: 40 }}
             options={[
               { value: 'due', label: 'DUE' },
               { value: 'overdue', label: 'OVERDUE' },

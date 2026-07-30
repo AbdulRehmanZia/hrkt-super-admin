@@ -190,19 +190,22 @@ body {
   color: #4B5563;
 }
 
-/* Input & Select Darker Placeholder Override */
-::placeholder,
-.ant-input::placeholder {
-  color: #64748B !important;
+/* High-Specificity Dark Placeholder Overrides for Inputs & Ant Design Select Components */
+input::placeholder,
+textarea::placeholder,
+.ant-input::placeholder,
+.ant-input-affix-wrapper input::placeholder {
+  color: #475569 !important;
   opacity: 1 !important;
 }
 
 .ant-select .ant-select-selection-placeholder,
+.ant-select-single .ant-select-selector .ant-select-selection-placeholder,
 .ant-select-selection-placeholder {
-  color: #64748B !important;
+  color: #475569 !important;
   opacity: 1 !important;
 }
 
 .ant-select .ant-select-arrow {
-  color: #64748B !important;
+  color: #475569 !important;
 }
