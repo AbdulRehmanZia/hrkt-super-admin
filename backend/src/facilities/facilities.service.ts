@@ -1,4 +1,9 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 
@@ -29,9 +34,13 @@ import {
   DiscountDocument,
   BookingRule,
   BookingRuleDocument,
-  PaymentStatus,
+  AuditLog,
+  AuditLogDocument,
 } from '../schemas';
 import { CreateFacilityDto } from './dto/create-facility.dto';
+import { UpdateCourtLimitDto } from './dto/update-court-limit.dto';
+import { UpdateAdminCredentialsDto } from './dto/update-admin-credentials.dto';
+import { UpdateFacilityStatusDto } from './dto/update-facility-status.dto';
 import { PLAN_BASE_FEES } from '../config/billing.config';
 
 @Injectable()
@@ -47,6 +56,7 @@ export class FacilitiesService {
     @InjectModel(Booking.name) private bookingModel: Model<BookingDocument>,
     @InjectModel(Discount.name) private discountModel: Model<DiscountDocument>,
     @InjectModel(BookingRule.name) private bookingRuleModel: Model<BookingRuleDocument>,
+    @InjectModel(AuditLog.name) private auditLogModel: Model<AuditLogDocument>,
   ) {}
 
   async create(dto: CreateFacilityDto) {
@@ -139,6 +149,7 @@ export class FacilitiesService {
       .exec();
     const bookingRules = await this.bookingRuleModel.find({ facilityId }).exec();
     const discounts = await this.discountModel.find({ facilityId }).exec();
+    const auditLogs = await this.auditLogModel.find({ facilityId }).sort({ createdAt: -1 }).limit(10).exec();
 
     // Group Users by Role (view-only requirement)
     const usersByRole = {
@@ -225,6 +236,7 @@ export class FacilitiesService {
       latestInvoice,
       bookingRules,
       discounts,
+      auditLogs,
       paymentBreakdown,
       stats: {
         revenue30Days: rev30dResult.length > 0 ? rev30dResult[0].total : 0,
@@ -237,6 +249,103 @@ export class FacilitiesService {
         sourceBreakdown,
       },
     };
+  }
+
+  // Control Action 1: Court Limit Change with Validation
+  async updateCourtLimit(id: string, dto: UpdateCourtLimitDto, superAdminEmail: string) {
+    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('Invalid facility ID');
+    const facilityId = new Types.ObjectId(id);
+
+    const facility = await this.facilityModel.findById(facilityId).exec();
+    if (!facility) throw new NotFoundException('Facility not found');
+
+    const activeCourtsCount = await this.courtModel.countDocuments({ facilityId }).exec();
+
+    if (dto.courtLimit < activeCourtsCount) {
+      throw new BadRequestException(
+        `Cannot set court limit to ${dto.courtLimit} because facility already has ${activeCourtsCount} courts configured`,
+      );
+    }
+
+    const previousLimit = facility.courtLimit;
+    facility.courtLimit = dto.courtLimit;
+    await facility.save();
+
+    await this.auditLogModel.create({
+      facilityId,
+      performedBy: superAdminEmail,
+      action: 'COURT_LIMIT_CHANGE',
+      details: `Updated court limit from ${previousLimit} to ${dto.courtLimit}`,
+    });
+
+    return facility;
+  }
+
+  // Control Action 2: Facility Admin Credentials Reset with Audit Log
+  async updateAdminCredentials(id: string, dto: UpdateAdminCredentialsDto, superAdminEmail: string) {
+    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('Invalid facility ID');
+    const facilityId = new Types.ObjectId(id);
+
+    const facility = await this.facilityModel.findById(facilityId).exec();
+    if (!facility) throw new NotFoundException('Facility not found');
+
+    const adminUser = await this.userModel.findOne({ facilityId, role: UserRole.FACILITY_ADMIN }).exec();
+    if (!adminUser) throw new NotFoundException('Facility Admin user not found');
+
+    const cleanEmail = dto.email.toLowerCase().trim();
+    if (cleanEmail !== adminUser.email) {
+      const existingUser = await this.userModel.findOne({ email: cleanEmail }).exec();
+      if (existingUser) {
+        throw new ConflictException('A user with this email address already exists');
+      }
+      adminUser.email = cleanEmail;
+    }
+
+    let passwordChanged = false;
+    if (dto.password && dto.password.trim().length > 0) {
+      adminUser.password = await bcrypt.hash(dto.password.trim(), 10);
+      passwordChanged = true;
+    }
+
+    await adminUser.save();
+
+    await this.auditLogModel.create({
+      facilityId,
+      performedBy: superAdminEmail,
+      action: 'ADMIN_CREDENTIALS_UPDATE',
+      details: `Updated Admin credentials for ${adminUser.name} (${cleanEmail}). ${passwordChanged ? 'Password reset successfully.' : 'Email updated.'}`,
+    });
+
+    return {
+      message: 'Admin credentials updated successfully',
+      admin: {
+        id: adminUser._id.toString(),
+        name: adminUser.name,
+        email: adminUser.email,
+      },
+    };
+  }
+
+  // Control Action 3: Suspend / Reactivate Facility Status
+  async updateStatus(id: string, dto: UpdateFacilityStatusDto, superAdminEmail: string) {
+    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('Invalid facility ID');
+    const facilityId = new Types.ObjectId(id);
+
+    const facility = await this.facilityModel.findById(facilityId).exec();
+    if (!facility) throw new NotFoundException('Facility not found');
+
+    const previousStatus = facility.status;
+    facility.status = dto.status;
+    await facility.save();
+
+    await this.auditLogModel.create({
+      facilityId,
+      performedBy: superAdminEmail,
+      action: 'STATUS_CHANGE',
+      details: `Updated facility status from ${previousStatus.toUpperCase()} to ${dto.status.toUpperCase()}`,
+    });
+
+    return facility;
   }
 
   async findBookings(

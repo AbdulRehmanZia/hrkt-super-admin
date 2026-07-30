@@ -16,6 +16,11 @@ import {
   Input,
   Select,
   Tooltip,
+  Modal,
+  Form,
+  InputNumber,
+  Popconfirm,
+  message,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -24,12 +29,16 @@ import {
   UserOutlined,
   BankOutlined,
   CheckCircleOutlined,
-  TagOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
   GlobalOutlined,
   MobileOutlined,
   RobotOutlined,
+  EditOutlined,
+  LockOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -43,6 +52,14 @@ interface FacilityUser {
   email: string;
   role: string;
   status: string;
+}
+
+interface AuditLogItem {
+  _id: string;
+  performedBy: string;
+  action: string;
+  details: string;
+  createdAt: string;
 }
 
 interface FacilityDetailResponse {
@@ -92,6 +109,7 @@ interface FacilityDetailResponse {
     isActive: boolean;
     timesUsed: number;
   }>;
+  auditLogs?: AuditLogItem[];
   paymentBreakdown: {
     fully_paid: { count: number; revenue: number };
     partially_paid: { count: number; revenue: number };
@@ -165,6 +183,17 @@ export const FacilityDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Modals & Control Action States
+  const [courtLimitModalVisible, setCourtLimitModalVisible] = useState(false);
+  const [courtLimitForm] = Form.useForm();
+  const [courtLimitSubmitting, setCourtLimitSubmitting] = useState(false);
+
+  const [credentialsModalVisible, setCredentialsModalVisible] = useState(false);
+  const [credentialsForm] = Form.useForm();
+  const [credentialsSubmitting, setCredentialsSubmitting] = useState(false);
+
+  const [statusSubmitting, setStatusSubmitting] = useState(false);
+
   // Bookings Tab State
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
@@ -179,25 +208,23 @@ export const FacilityDetailPage: React.FC = () => {
   const [customersTotal, setCustomersTotal] = useState(0);
   const [customerSearch, setCustomerSearch] = useState('');
 
-  // Fetch Facility Detail Main Response
-  useEffect(() => {
+  const fetchDetail = async () => {
     if (!id) return;
-    const fetchDetail = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get<FacilityDetailResponse>(`/facilities/${id}`, token!);
-        setDetail(res);
-      } catch (err: any) {
-        setError(err?.message || 'Failed to load facility detail');
-      } finally {
-        setLoading(false);
-      }
-    };
+    setLoading(true);
+    try {
+      const res = await api.get<FacilityDetailResponse>(`/facilities/${id}`, token!);
+      setDetail(res);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load facility detail');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchDetail();
   }, [id, token]);
 
-  // Fetch Paginated Bookings
   const fetchBookings = async (p: number, payStatus?: string) => {
     if (!id) return;
     setBookingsLoading(true);
@@ -214,7 +241,6 @@ export const FacilityDetailPage: React.FC = () => {
     }
   };
 
-  // Fetch Paginated Customers
   const fetchCustomers = async (p: number, s?: string) => {
     if (!id) return;
     setCustomersLoading(true);
@@ -239,6 +265,63 @@ export const FacilityDetailPage: React.FC = () => {
     fetchCustomers(customersPage, customerSearch);
   }, [id, customersPage, customerSearch]);
 
+  // Control Action 1: Handle Court Limit Update with Validation
+  const handleUpdateCourtLimit = async (values: { courtLimit: number }) => {
+    if (!id || !detail) return;
+    const currentCourtCount = detail.courts.length;
+    if (values.courtLimit < currentCourtCount) {
+      message.error(
+        `Cannot set court limit to ${values.courtLimit} because facility already has ${currentCourtCount} courts configured!`,
+      );
+      return;
+    }
+
+    setCourtLimitSubmitting(true);
+    try {
+      await api.patch(`/facilities/${id}/court-limit`, values, token!);
+      message.success(`Court limit successfully updated to ${values.courtLimit}`);
+      setCourtLimitModalVisible(false);
+      fetchDetail();
+    } catch (err: any) {
+      message.error(err?.message || 'Failed to update court limit');
+    } finally {
+      setCourtLimitSubmitting(false);
+    }
+  };
+
+  // Control Action 2: Handle Admin Credentials Reset (with Audit Log)
+  const handleUpdateAdminCredentials = async (values: { email: string; password?: string }) => {
+    if (!id) return;
+    setCredentialsSubmitting(true);
+    try {
+      await api.patch(`/facilities/${id}/admin-credentials`, values, token!);
+      message.success('Admin credentials updated & audit log recorded successfully');
+      setCredentialsModalVisible(false);
+      credentialsForm.resetFields();
+      fetchDetail();
+    } catch (err: any) {
+      message.error(err?.message || 'Failed to update admin credentials');
+    } finally {
+      setCredentialsSubmitting(false);
+    }
+  };
+
+  // Control Action 3: Handle Suspend / Reactivate Status Toggle
+  const handleToggleStatus = async () => {
+    if (!id || !detail) return;
+    const newStatus = detail.facility.status === 'active' ? 'suspended' : 'active';
+    setStatusSubmitting(true);
+    try {
+      await api.patch(`/facilities/${id}/status`, { status: newStatus }, token!);
+      message.success(`Facility status updated to ${newStatus.toUpperCase()}`);
+      fetchDetail();
+    } catch (err: any) {
+      message.error(err?.message || 'Failed to update facility status');
+    } finally {
+      setStatusSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 450 }}>
@@ -258,7 +341,8 @@ export const FacilityDetailPage: React.FC = () => {
     );
   }
 
-  const { facility, courts, usersByRole, subscription, bookingRules, discounts, paymentBreakdown, stats } = detail;
+  const { facility, courts, usersByRole, subscription, bookingRules, auditLogs, paymentBreakdown, stats } = detail;
+  const adminUser = usersByRole.facility_admin[0];
 
   const bookingColumns = [
     {
@@ -353,9 +437,9 @@ export const FacilityDetailPage: React.FC = () => {
         Back to Facilities
       </Button>
 
-      {/* Header Banner */}
+      {/* Header Banner with Administrative Controls (P1) */}
       <Card style={{ marginBottom: 24, borderRadius: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <Title level={2} style={{ margin: 0 }}>
@@ -376,12 +460,45 @@ export const FacilityDetailPage: React.FC = () => {
             </Paragraph>
           </div>
 
-          <div style={{ textAlign: 'right' }}>
-            <Text type="secondary">Courts Configured</Text>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#1677ff' }}>
-              {courts.length} / {facility.courtLimit} Courts
-            </div>
-          </div>
+          {/* Action Control Buttons (P1 Requirement) */}
+          <Space wrap>
+            <Button
+              icon={<EditOutlined />}
+              onClick={() => {
+                courtLimitForm.setFieldsValue({ courtLimit: facility.courtLimit });
+                setCourtLimitModalVisible(true);
+              }}
+            >
+              Edit Court Limit ({facility.courtLimit})
+            </Button>
+
+            <Button
+              icon={<LockOutlined />}
+              onClick={() => {
+                credentialsForm.setFieldsValue({ email: adminUser?.email || '' });
+                setCredentialsModalVisible(true);
+              }}
+            >
+              Reset Admin Credentials
+            </Button>
+
+            <Popconfirm
+              title={`${facility.status === 'active' ? 'Suspend' : 'Reactivate'} Facility?`}
+              description={`Are you sure you want to ${facility.status === 'active' ? 'suspend' : 'reactivate'} ${facility.name}?`}
+              onConfirm={handleToggleStatus}
+              okText="Yes, Proceed"
+              cancelText="Cancel"
+              okButtonProps={{ danger: facility.status === 'active', loading: statusSubmitting }}
+            >
+              <Button
+                danger={facility.status === 'active'}
+                type={facility.status === 'active' ? 'default' : 'primary'}
+                icon={facility.status === 'active' ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+              >
+                {facility.status === 'active' ? 'Suspend Facility' : 'Reactivate Facility'}
+              </Button>
+            </Popconfirm>
+          </Space>
         </div>
       </Card>
 
@@ -445,7 +562,7 @@ export const FacilityDetailPage: React.FC = () => {
 
       {/* VIEW-ONLY P0 SECTIONS ROW 1: Users by Role & Bookings Payment Breakdown */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        {/* Section 1: Users Broken Down by Role (View-Only P0) */}
+        {/* Section 1: Users Broken Down by Role */}
         <Col xs={24} lg={12}>
           <Card
             title={
@@ -505,7 +622,7 @@ export const FacilityDetailPage: React.FC = () => {
           </Card>
         </Col>
 
-        {/* Section 2: Bookings Breakdown by Payment Type (View-Only P0 - Count AND Revenue PKR) */}
+        {/* Section 2: Bookings Breakdown by Payment Type */}
         <Col xs={24} lg={12}>
           <Card
             title={
@@ -554,15 +671,15 @@ export const FacilityDetailPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* VIEW-ONLY P0 SECTIONS ROW 2: Booking Rules & Discounts Summary */}
+      {/* VIEW-ONLY P0 SECTIONS ROW 2: Booking Rules & Audit Logs */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        {/* Booking Rules Summary (View-Only P0) */}
+        {/* Booking Rules Summary */}
         <Col xs={24} lg={12}>
           <Card
             title={
               <Space>
                 <CheckCircleOutlined style={{ color: '#1677ff' }} />
-                <span>Booking Rules Configuration (View-Only)</span>
+                <span>Booking Rules Configuration</span>
               </Space>
             }
           >
@@ -582,32 +699,34 @@ export const FacilityDetailPage: React.FC = () => {
           </Card>
         </Col>
 
-        {/* Discounts Summary (View-Only P0) */}
+        {/* Audit Log Trail (P1 Control Requirement) */}
         <Col xs={24} lg={12}>
           <Card
             title={
               <Space>
-                <TagOutlined style={{ color: '#722ed1' }} />
-                <span>Active Discounts Summary (View-Only)</span>
+                <HistoryOutlined style={{ color: '#fa8c16' }} />
+                <span>Super Admin Audit Log Trail</span>
               </Space>
             }
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {discounts.map((disc) => (
-                <div key={disc._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#fafafa', borderRadius: 6 }}>
-                  <div>
-                    <Text strong>{disc.name}</Text>
-                    <div style={{ fontSize: 12, color: '#8c8c8c' }}>
-                      Type: {disc.type.toUpperCase()} · Value: {disc.value}
+            {!auditLogs || auditLogs.length === 0 ? (
+              <Text type="secondary">No administrative actions logged for this facility yet.</Text>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {auditLogs.map((log) => (
+                  <div key={log._id} style={{ padding: '8px 12px', background: '#fafafa', borderRadius: 6, border: '1px solid #f0f0f0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <Tag color="orange">{log.action}</Tag>
+                      <Text type="secondary" style={{ fontSize: 11 }}>
+                        {new Date(log.createdAt).toLocaleString('en-PK')}
+                      </Text>
                     </div>
+                    <div style={{ fontSize: 12, color: '#262626' }}>{log.details}</div>
+                    <div style={{ fontSize: 11, color: '#8c8c8c', marginTop: 2 }}>By: {log.performedBy}</div>
                   </div>
-                  <Space>
-                    <Tag color="purple">{disc.timesUsed} Used</Tag>
-                    <Tag color={disc.isActive ? 'green' : 'default'}>{disc.isActive ? 'ACTIVE' : 'INACTIVE'}</Tag>
-                  </Space>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
         </Col>
       </Row>
@@ -686,6 +805,82 @@ export const FacilityDetailPage: React.FC = () => {
           ]}
         />
       </Card>
+
+      {/* Control Modal 1: Edit Court Limit */}
+      <Modal
+        title="Edit Court Limit"
+        open={courtLimitModalVisible}
+        onCancel={() => setCourtLimitModalVisible(false)}
+        onOk={() => courtLimitForm.submit()}
+        confirmLoading={courtLimitSubmitting}
+        okText="Update Limit"
+      >
+        <Alert
+          message="Validation Notice"
+          description={`Facility currently has ${courts.length} active courts configured. Court limit cannot be lower than ${courts.length}.`}
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        <Form form={courtLimitForm} layout="vertical" onFinish={handleUpdateCourtLimit}>
+          <Form.Item
+            name="courtLimit"
+            label="Maximum Allowed Court Limit"
+            rules={[
+              { required: true, message: 'Please enter court limit' },
+              {
+                validator: (_, value) =>
+                  value >= courts.length
+                    ? Promise.resolve()
+                    : Promise.reject(
+                        new Error(`Court limit cannot be lower than ${courts.length} existing courts!`),
+                      ),
+              },
+            ]}
+          >
+            <InputNumber min={courts.length} max={50} style={{ width: '100%' }} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Control Modal 2: Reset Admin Credentials (with Audit Log) */}
+      <Modal
+        title="Reset Facility Admin Credentials"
+        open={credentialsModalVisible}
+        onCancel={() => setCredentialsModalVisible(false)}
+        onOk={() => credentialsForm.submit()}
+        confirmLoading={credentialsSubmitting}
+        okText="Save Credentials & Record Audit"
+      >
+        <Alert
+          message="Audit Log Requirement"
+          description="Updating admin email or password will automatically create an immutable Audit Log entry in database."
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        <Form form={credentialsForm} layout="vertical" onFinish={handleUpdateAdminCredentials}>
+          <Form.Item
+            name="email"
+            label="Facility Admin Email Address"
+            rules={[
+              { required: true, message: 'Please enter email' },
+              { type: 'email', message: 'Please enter a valid email' },
+            ]}
+          >
+            <Input prefix={<UserOutlined />} />
+          </Form.Item>
+
+          <Form.Item
+            name="password"
+            label="New Temporary Password (Optional)"
+            extra="Leave blank if you only want to update the email address"
+            rules={[{ min: 6, message: 'Password must be at least 6 characters' }]}
+          >
+            <Input.Password prefix={<LockOutlined />} placeholder="Enter new password" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

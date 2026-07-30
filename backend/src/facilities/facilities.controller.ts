@@ -1,7 +1,20 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { FacilitiesService } from './facilities.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateFacilityDto } from './dto/create-facility.dto';
+import { UpdateCourtLimitDto } from './dto/update-court-limit.dto';
+import { UpdateAdminCredentialsDto } from './dto/update-admin-credentials.dto';
+import { UpdateFacilityStatusDto } from './dto/update-facility-status.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('facilities')
@@ -33,6 +46,36 @@ export class FacilitiesController {
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.facilitiesService.findOne(id);
+  }
+
+  @Patch(':id/court-limit')
+  async updateCourtLimit(
+    @Param('id') id: string,
+    @Body() dto: UpdateCourtLimitDto,
+    @Request() req: any,
+  ) {
+    const superAdminEmail = req.user?.email || 'admin@hrkt.io';
+    return this.facilitiesService.updateCourtLimit(id, dto, superAdminEmail);
+  }
+
+  @Patch(':id/admin-credentials')
+  async updateAdminCredentials(
+    @Param('id') id: string,
+    @Body() dto: UpdateAdminCredentialsDto,
+    @Request() req: any,
+  ) {
+    const superAdminEmail = req.user?.email || 'admin@hrkt.io';
+    return this.facilitiesService.updateAdminCredentials(id, dto, superAdminEmail);
+  }
+
+  @Patch(':id/status')
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateFacilityStatusDto,
+    @Request() req: any,
+  ) {
+    const superAdminEmail = req.user?.email || 'admin@hrkt.io';
+    return this.facilitiesService.updateStatus(id, dto, superAdminEmail);
   }
 
   @Get(':id/bookings')

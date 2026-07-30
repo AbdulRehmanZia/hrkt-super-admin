@@ -3,38 +3,41 @@ import { MongooseModule } from '@nestjs/mongoose';
 import {
   Facility,
   FacilitySchema,
-  User,
-  UserSchema,
   Court,
   CourtSchema,
+  User,
+  UserSchema,
   Customer,
   CustomerSchema,
   Booking,
   BookingSchema,
-  Discount,
-  DiscountSchema,
   BookingRule,
   BookingRuleSchema,
+  Discount,
+  DiscountSchema,
   Subscription,
   SubscriptionSchema,
   Invoice,
   InvoiceSchema,
+  AuditLog,
+  AuditLogSchema,
 } from './index';
 
+const featureSchemas = MongooseModule.forFeature([
+  { name: Facility.name, schema: FacilitySchema },
+  { name: Court.name, schema: CourtSchema },
+  { name: User.name, schema: UserSchema },
+  { name: Customer.name, schema: CustomerSchema },
+  { name: Booking.name, schema: BookingSchema },
+  { name: BookingRule.name, schema: BookingRuleSchema },
+  { name: Discount.name, schema: DiscountSchema },
+  { name: Subscription.name, schema: SubscriptionSchema },
+  { name: Invoice.name, schema: InvoiceSchema },
+  { name: AuditLog.name, schema: AuditLogSchema },
+]);
+
 @Module({
-  imports: [
-    MongooseModule.forFeature([
-      { name: Facility.name, schema: FacilitySchema },
-      { name: User.name, schema: UserSchema },
-      { name: Court.name, schema: CourtSchema },
-      { name: Customer.name, schema: CustomerSchema },
-      { name: Booking.name, schema: BookingSchema },
-      { name: Discount.name, schema: DiscountSchema },
-      { name: BookingRule.name, schema: BookingRuleSchema },
-      { name: Subscription.name, schema: SubscriptionSchema },
-      { name: Invoice.name, schema: InvoiceSchema },
-    ]),
-  ],
-  exports: [MongooseModule],
+  imports: [featureSchemas],
+  exports: [featureSchemas],
 })
 export class DatabaseSchemasModule {}
