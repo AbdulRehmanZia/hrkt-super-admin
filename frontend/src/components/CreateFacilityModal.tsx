@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   Form,
@@ -17,14 +17,23 @@ import {
   MailOutlined,
   CopyOutlined,
   CheckCircleFilled,
+  EditOutlined,
 } from '@ant-design/icons';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 const { Text, Paragraph } = Typography;
 
+export interface FacilityEditTarget {
+  _id: string;
+  name: string;
+  city: string;
+  courtLimit: number;
+}
+
 interface CreateFacilityModalProps {
   open: boolean;
+  facilityToEdit?: FacilityEditTarget | null;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -45,6 +54,7 @@ interface CreateFacilityResponse {
 
 export const CreateFacilityModal: React.FC<CreateFacilityModalProps> = ({
   open,
+  facilityToEdit,
   onClose,
   onSuccess,
 }) => {
@@ -52,6 +62,22 @@ export const CreateFacilityModal: React.FC<CreateFacilityModalProps> = ({
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isEditMode = !!facilityToEdit;
+
+  useEffect(() => {
+    if (open) {
+      if (facilityToEdit) {
+        form.setFieldsValue({
+          name: facilityToEdit.name,
+          city: facilityToEdit.city,
+          courtLimit: facilityToEdit.courtLimit,
+        });
+      } else {
+        form.resetFields();
+      }
+    }
+  }, [open, facilityToEdit, form]);
 
   // One-time credentials dialog state after successful creation
   const [createdData, setCreatedData] = useState<CreateFacilityResponse | null>(null);
@@ -62,12 +88,20 @@ export const CreateFacilityModal: React.FC<CreateFacilityModalProps> = ({
       setLoading(true);
       setError(null);
 
-      const res = await api.post<CreateFacilityResponse>('/facilities', values, token!);
-
-      // Successfully created! Store credentials result and clear form
-      setCreatedData(res);
-      form.resetFields();
-      onSuccess();
+      if (isEditMode && facilityToEdit) {
+        // Reused Form for Editing (Spec Section 4.3)
+        await api.patch(`/facilities/${facilityToEdit._id}`, values, token!);
+        message.success('Facility details updated successfully!');
+        form.resetFields();
+        onSuccess();
+        onClose();
+      } else {
+        // Creation Mode
+        const res = await api.post<CreateFacilityResponse>('/facilities', values, token!);
+        setCreatedData(res);
+        form.resetFields();
+        onSuccess();
+      }
     } catch (err: any) {
       if (err?.message) {
         setError(err.message);
@@ -92,24 +126,30 @@ export const CreateFacilityModal: React.FC<CreateFacilityModalProps> = ({
 
   return (
     <>
-      {/* Creation Form Modal */}
+      {/* Creation / Edit Form Modal (Spec 4.3 Reused Form) */}
       <Modal
         open={open && !createdData}
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <BankOutlined style={{ color: '#1677ff', fontSize: 20 }} />
-            <span>Onboard New Facility</span>
+            {isEditMode ? (
+              <EditOutlined style={{ color: '#1677ff', fontSize: 20 }} />
+            ) : (
+              <BankOutlined style={{ color: '#1677ff', fontSize: 20 }} />
+            )}
+            <span>{isEditMode ? 'Edit Facility Details' : 'Onboard New Facility'}</span>
           </div>
         }
         onCancel={handleModalClose}
         onOk={handleSubmit}
         confirmLoading={loading}
-        okText="Create Facility"
+        okText={isEditMode ? 'Save Changes' : 'Create Facility'}
         width={540}
         destroyOnClose
       >
         <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-          Set up facility details and generate the first admin manager credentials in a single step.
+          {isEditMode
+            ? 'Update general facility parameters (Name, City, Court Limit).'
+            : 'Set up facility details and generate the first admin manager credentials in a single step.'}
         </Text>
 
         {error && (
@@ -136,7 +176,7 @@ export const CreateFacilityModal: React.FC<CreateFacilityModalProps> = ({
             <Input placeholder="e.g. Smash Padel Club" prefix={<BankOutlined style={{ color: '#bfbfbf' }} />} />
           </Form.Item>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isEditMode ? '1fr 1fr' : '1fr 1fr 1.2fr', gap: 12 }}>
             <Form.Item
               name="city"
               label="City"
@@ -153,43 +193,49 @@ export const CreateFacilityModal: React.FC<CreateFacilityModalProps> = ({
               <InputNumber min={1} max={50} style={{ width: '100%' }} />
             </Form.Item>
 
-            <Form.Item
-              name="subscriptionPlan"
-              label="Subscription Plan"
-              rules={[{ required: true, message: 'Select subscription plan' }]}
-            >
-              <Select
-                options={[
-                  { value: 'starter', label: 'Starter (10k PKR/mo)' },
-                  { value: 'pro', label: 'Pro (15k PKR/mo)' },
-                  { value: 'enterprise', label: 'Enterprise (25k PKR/mo)' },
-                ]}
-              />
-            </Form.Item>
+            {!isEditMode && (
+              <Form.Item
+                name="subscriptionPlan"
+                label="Subscription Plan"
+                rules={[{ required: true, message: 'Select subscription plan' }]}
+              >
+                <Select
+                  options={[
+                    { value: 'starter', label: 'Starter (10k PKR/mo)' },
+                    { value: 'pro', label: 'Pro (15k PKR/mo)' },
+                    { value: 'enterprise', label: 'Enterprise (25k PKR/mo)' },
+                  ]}
+                />
+              </Form.Item>
+            )}
           </div>
 
-          <Divider titlePlacement="left" style={{ margin: '16px 0', fontSize: 13, color: '#8c8c8c' }}>
-            FIRST ADMIN ACCOUNT
-          </Divider>
+          {!isEditMode && (
+            <>
+              <Divider titlePlacement="left" style={{ margin: '16px 0', fontSize: 13, color: '#8c8c8c' }}>
+                FIRST ADMIN ACCOUNT
+              </Divider>
 
-          <Form.Item
-            name="adminName"
-            label="Manager Full Name"
-            rules={[{ required: true, message: 'Please enter manager name' }]}
-          >
-            <Input placeholder="e.g. Tariq Khan" prefix={<UserOutlined style={{ color: '#bfbfbf' }} />} />
-          </Form.Item>
+              <Form.Item
+                name="adminName"
+                label="Manager Full Name"
+                rules={[{ required: true, message: 'Please enter manager name' }]}
+              >
+                <Input placeholder="e.g. Tariq Khan" prefix={<UserOutlined style={{ color: '#bfbfbf' }} />} />
+              </Form.Item>
 
-          <Form.Item
-            name="adminEmail"
-            label="Manager Email Address"
-            rules={[
-              { required: true, message: 'Please enter manager email' },
-              { type: 'email', message: 'Enter a valid email address' },
-            ]}
-          >
-            <Input placeholder="e.g. tariq@smashpadel.pk" prefix={<MailOutlined style={{ color: '#bfbfbf' }} />} />
-          </Form.Item>
+              <Form.Item
+                name="adminEmail"
+                label="Manager Email Address"
+                rules={[
+                  { required: true, message: 'Please enter manager email' },
+                  { type: 'email', message: 'Enter a valid email address' },
+                ]}
+              >
+                <Input placeholder="e.g. tariq@smashpadel.pk" prefix={<MailOutlined style={{ color: '#bfbfbf' }} />} />
+              </Form.Item>
+            </>
+          )}
         </Form>
       </Modal>
 

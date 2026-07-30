@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Typography, Table, Button, Space, Card, Tag, Input, Select } from 'antd';
-import { PlusOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined,
+  SearchOutlined,
+  EyeOutlined,
+  EditOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
-import { CreateFacilityModal } from '../components/CreateFacilityModal';
+import { CreateFacilityModal, type FacilityEditTarget } from '../components/CreateFacilityModal';
 
 const { Title } = Typography;
 
@@ -12,6 +17,7 @@ interface FacilityRow {
   _id: string;
   name: string;
   city: string;
+  courtLimit: number;
   status: string;
   courtCount: number;
   activeCustomers: number;
@@ -63,8 +69,9 @@ export const FacilitiesListPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [subStatusFilter, setSubStatusFilter] = useState<string | undefined>(undefined);
 
-  // Modal open state
+  // Modal open & edit states
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<FacilityEditTarget | null>(null);
 
   const fetchFacilities = async (p: number, s?: string, st?: string, sub?: string) => {
     setLoading(true);
@@ -173,18 +180,37 @@ export const FacilitiesListPage: React.FC = () => {
     {
       title: 'Action',
       key: 'actions',
-      width: 80,
+      width: 140,
       align: 'center' as const,
       render: (_: any, record: FacilityRow) => (
-        <Button
-          type="link"
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => navigate(`/facilities/${record._id}`)}
-          style={{ padding: 0 }}
-        >
-          View
-        </Button>
+        <Space size="small">
+          <Button
+            type="link"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => navigate(`/facilities/${record._id}`)}
+            style={{ padding: 0 }}
+          >
+            View
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => {
+              setEditTarget({
+                _id: record._id,
+                name: record.name,
+                city: record.city,
+                courtLimit: record.courtLimit,
+              });
+              setIsModalOpen(true);
+            }}
+            style={{ padding: 0 }}
+          >
+            Edit
+          </Button>
+        </Space>
       ),
     },
   ];
@@ -283,12 +309,17 @@ export const FacilitiesListPage: React.FC = () => {
         />
       </Card>
 
-      {/* Onboard Facility Modal Component */}
+      {/* Onboard / Edit Facility Modal Component */}
       <CreateFacilityModal
         open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        facilityToEdit={editTarget}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditTarget(null);
+        }}
         onSuccess={() => {
           setIsModalOpen(false);
+          setEditTarget(null);
           fetchFacilities(page, search, statusFilter, subStatusFilter);
         }}
       />

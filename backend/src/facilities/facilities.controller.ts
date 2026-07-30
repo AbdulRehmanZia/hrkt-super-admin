@@ -12,6 +12,7 @@ import {
 import { FacilitiesService } from './facilities.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateFacilityDto } from './dto/create-facility.dto';
+import { UpdateFacilityDto } from './dto/update-facility.dto';
 import { UpdateCourtLimitDto } from './dto/update-court-limit.dto';
 import { UpdateAdminCredentialsDto } from './dto/update-admin-credentials.dto';
 import { UpdateFacilityStatusDto } from './dto/update-facility-status.dto';
@@ -46,6 +47,16 @@ export class FacilitiesController {
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.facilitiesService.findOne(id);
+  }
+
+  @Patch(':id')
+  async updateFacility(
+    @Param('id') id: string,
+    @Body() dto: UpdateFacilityDto,
+    @Request() req: any,
+  ) {
+    const superAdminEmail = req.user?.email || 'admin@hrkt.io';
+    return this.facilitiesService.updateFacility(id, dto, superAdminEmail);
   }
 
   @Patch(':id/court-limit')

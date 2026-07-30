@@ -43,6 +43,7 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { CreateFacilityModal } from '../components/CreateFacilityModal';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -193,6 +194,7 @@ export const FacilityDetailPage: React.FC = () => {
   const [credentialsSubmitting, setCredentialsSubmitting] = useState(false);
 
   const [statusSubmitting, setStatusSubmitting] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   // Bookings Tab State
   const [bookings, setBookings] = useState<BookingRow[]>([]);
@@ -462,6 +464,14 @@ export const FacilityDetailPage: React.FC = () => {
 
           {/* Action Control Buttons (P1 Requirement) */}
           <Space wrap>
+            <Button
+              icon={<EditOutlined />}
+              type="primary"
+              onClick={() => setEditModalOpen(true)}
+            >
+              Edit Facility Info
+            </Button>
+
             <Button
               icon={<EditOutlined />}
               onClick={() => {
@@ -881,6 +891,24 @@ export const FacilityDetailPage: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Edit Facility Info Modal (Spec 4.3 Reused Form) */}
+      {facility && (
+        <CreateFacilityModal
+          open={editModalOpen}
+          facilityToEdit={{
+            _id: facility._id,
+            name: facility.name,
+            city: facility.city,
+            courtLimit: facility.courtLimit,
+          }}
+          onClose={() => setEditModalOpen(false)}
+          onSuccess={() => {
+            setEditModalOpen(false);
+            fetchDetail();
+          }}
+        />
+      )}
     </div>
   );
 };
