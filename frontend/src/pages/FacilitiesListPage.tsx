@@ -147,11 +147,11 @@ export const FacilitiesListPage: React.FC = () => {
       render: (_: any, record: FacilityRow) => getSubBadge(record.subscriptionPlan, record.subscriptionStatus),
     },
     {
-      title: 'Revenue (PKR)',
+      title: 'Lifetime Revenue (PKR)',
       dataIndex: 'totalRevenue',
       key: 'totalRevenue',
       align: 'right' as const,
-      width: 110,
+      width: 140,
       render: (val: number) => <Text strong style={{ color: '#111827' }}>{val.toLocaleString()}</Text>,
     },
     {
@@ -235,7 +235,7 @@ export const FacilitiesListPage: React.FC = () => {
       'Active Customers',
       'Subscription Plan',
       'Subscription Status',
-      'Total Revenue (PKR)',
+      'Lifetime Revenue (PKR)',
       'Lifetime Bookings',
       'Last Booking Date',
       'Onboarded Date',
