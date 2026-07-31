@@ -17,6 +17,7 @@ import {
   CourtDocument,
   Booking,
   BookingDocument,
+  BookingStatus,
   AuditLog,
   AuditLogDocument,
   User,
@@ -206,6 +207,7 @@ export class InvoicesService {
       .countDocuments({
         facilityId,
         startTime: { $gte: startDate, $lt: endDate },
+        status: BookingStatus.COMPLETED,
       })
       .exec();
 
