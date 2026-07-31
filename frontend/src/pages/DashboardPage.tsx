@@ -22,7 +22,6 @@ import {
   MobileOutlined,
   RobotOutlined,
   TagOutlined,
-  ArrowUpOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
@@ -190,10 +189,6 @@ export const DashboardPage: React.FC = () => {
                 <DollarOutlined style={{ fontSize: 20, color: '#00C27A' }} />
               </div>
             </div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: '#E8FFF5', color: '#00C27A' }}>
-              <ArrowUpOutlined style={{ fontSize: 11 }} />
-              <span>+12.4% vs last month</span>
-            </div>
             <Text type="secondary" style={{ fontSize: 12, color: '#94A3B8', marginTop: 8, display: 'block' }}>
               All-time: PKR {kpis.totalRevenueAllTime.toLocaleString()}
             </Text>
@@ -234,10 +229,6 @@ export const DashboardPage: React.FC = () => {
                 <UserOutlined style={{ fontSize: 20, color: '#2563EB' }} />
               </div>
             </div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: '#EFF6FF', color: '#2563EB' }}>
-              <ArrowUpOutlined style={{ fontSize: 11 }} />
-              <span>+8.1% user growth</span>
-            </div>
             <Text type="secondary" style={{ fontSize: 12, color: '#94A3B8', marginTop: 8, display: 'block' }}>
               Active platform customers
             </Text>
@@ -256,10 +247,6 @@ export const DashboardPage: React.FC = () => {
               <div style={{ width: 42, height: 42, borderRadius: 10, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <CalendarOutlined style={{ fontSize: 20, color: '#B45309' }} />
               </div>
-            </div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 9999, fontSize: 12, fontWeight: 600, background: '#E8FFF5', color: '#00C27A' }}>
-              <ArrowUpOutlined style={{ fontSize: 11 }} />
-              <span>+5.3% vs last period</span>
             </div>
             <Text type="secondary" style={{ fontSize: 12, color: '#94A3B8', marginTop: 8, display: 'block' }}>
               Total All-Time: {kpis.totalBookings.toLocaleString()}
