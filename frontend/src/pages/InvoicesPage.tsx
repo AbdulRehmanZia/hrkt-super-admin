@@ -500,7 +500,7 @@ export const InvoicesPage: React.FC = () => {
               Billing Formula Breakdown
             </Title>
             <Paragraph type="secondary" style={{ fontSize: 13, color: '#6B7280' }}>
-              Total Invoice = Base Plan Fee + (Courts Count x PKR 1,500) + (Bookings Count x PKR 50)
+              Total Invoice = Base Plan Fee + (Courts Count x PKR 1,500) + (Bookings Count x PKR 20)
             </Paragraph>
 
             <div style={{ background: '#F9FAFB', padding: 18, borderRadius: 12, border: '1px solid #E5E7EB', marginBottom: 20 }}>
