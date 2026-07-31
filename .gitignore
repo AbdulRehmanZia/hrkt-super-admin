@@ -23,6 +23,5 @@ build/
 logs/
 *.log
 
-# Private design notes (push manually when ready)
-docs/DECISIONS.md
-docs/PLAN.md
+# Private design notes & docs folder
+docs/
