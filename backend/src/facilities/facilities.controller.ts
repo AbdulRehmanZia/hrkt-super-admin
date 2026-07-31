@@ -47,8 +47,12 @@ export class FacilitiesController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.facilitiesService.findOne(id);
+  async findOne(
+    @Param('id') id: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.facilitiesService.findOne(id, startDate, endDate);
   }
 
   @Patch(':id')

@@ -128,7 +128,7 @@ export class FacilitiesService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, startDateStr?: string, endDateStr?: string) {
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException('Invalid facility ID');
     }
@@ -160,10 +160,27 @@ export class FacilitiesService {
       coach: users.filter((u) => u.role === UserRole.COACH),
     };
 
-    // Bookings breakdown by payment type (count AND revenue PKR — view-only requirement)
+    // Date Window Scoping (defaults to last 30 days if not provided)
+    const now = new Date();
+    let windowStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    let windowEnd = now;
+
+    if (startDateStr) {
+      const parsedStart = new Date(startDateStr);
+      if (!isNaN(parsedStart.getTime())) windowStart = parsedStart;
+    }
+    if (endDateStr) {
+      const parsedEnd = new Date(endDateStr);
+      if (!isNaN(parsedEnd.getTime())) {
+        parsedEnd.setHours(23, 59, 59, 999);
+        windowEnd = parsedEnd;
+      }
+    }
+
+    // Bookings breakdown by payment type (count AND revenue PKR — scoped to date range)
     const paymentBreakdownRaw = await this.bookingModel
       .aggregate([
-        { $match: { facilityId } },
+        { $match: { facilityId, startTime: { $gte: windowStart, $lte: windowEnd } } },
         {
           $group: {
             _id: '$paymentStatus',
@@ -189,13 +206,10 @@ export class FacilitiesService {
       }
     });
 
-    // Per-facility aggregated stats
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
+    // Per-facility aggregated stats for date window
     const rev30dResult = await this.bookingModel
       .aggregate([
-        { $match: { facilityId, startTime: { $gte: thirtyDaysAgo } } },
+        { $match: { facilityId, startTime: { $gte: windowStart, $lte: windowEnd } } },
         { $group: { _id: null, total: { $sum: '$amountPaid' }, totalBookings: { $sum: 1 } } },
       ])
       .exec();
@@ -217,7 +231,7 @@ export class FacilitiesService {
 
     const sourceResult = await this.bookingModel
       .aggregate([
-        { $match: { facilityId } },
+        { $match: { facilityId, startTime: { $gte: windowStart, $lte: windowEnd } } },
         {
           $group: {
             _id: '$source',

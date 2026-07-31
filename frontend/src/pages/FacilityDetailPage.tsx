@@ -21,7 +21,11 @@ import {
   InputNumber,
   Popconfirm,
   message,
+  DatePicker,
 } from 'antd';
+import dayjs from 'dayjs';
+
+const { RangePicker } = DatePicker;
 import {
   ArrowLeftOutlined,
   DollarOutlined,
@@ -221,11 +225,21 @@ export const FacilityDetailPage: React.FC = () => {
   const [customersTotal, setCustomersTotal] = useState(0);
   const [customerSearch, setCustomerSearch] = useState('');
 
-  const fetchDetail = async () => {
+  // Date Range Filter State for Facility Stats
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
+
+  const fetchDetail = async (range?: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null) => {
     if (!id) return;
     setLoading(true);
     try {
-      const res = await api.get<FacilityDetailResponse>(`/facilities/${id}`, token!);
+      let path = `/facilities/${id}`;
+      const activeRange = range !== undefined ? range : dateRange;
+      if (activeRange && activeRange[0] && activeRange[1]) {
+        const startStr = activeRange[0].format('YYYY-MM-DD');
+        const endStr = activeRange[1].format('YYYY-MM-DD');
+        path += `?startDate=${startStr}&endDate=${endStr}`;
+      }
+      const res = await api.get<FacilityDetailResponse>(path, token!);
       setDetail(res);
     } catch (err: any) {
       setError(err?.message || 'Failed to load facility detail');
@@ -520,6 +534,59 @@ export const FacilityDetailPage: React.FC = () => {
           </Space>
         </div>
       </Card>
+
+      {/* Date Range Filter Bar for Facility Detail Stats */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 16,
+          background: '#F8FAFC',
+          padding: '12px 18px',
+          borderRadius: 10,
+          border: '1px solid #E2E8F0',
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
+        <div>
+          <Text strong style={{ fontSize: 15, color: '#0F172A' }}>
+            Facility Performance Metrics & Breakdown
+          </Text>
+          <Text type="secondary" style={{ fontSize: 12, display: 'block', color: '#64748B' }}>
+            {dateRange && dateRange[0] && dateRange[1]
+              ? `Filtered Window: ${dateRange[0].format('DD MMM YYYY')} – ${dateRange[1].format('DD MMM YYYY')}`
+              : 'Default Window: Last 30 Days'}
+          </Text>
+        </div>
+        <Space wrap>
+          <Text style={{ fontSize: 13, color: '#475569', fontWeight: 500 }}>Filter Date Range:</Text>
+          <RangePicker
+            value={dateRange}
+            allowClear
+            onChange={(dates) => {
+              const r = dates as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null;
+              setDateRange(r);
+              fetchDetail(r);
+            }}
+            placeholder={['Start Date', 'End Date']}
+            style={{ borderRadius: 8 }}
+          />
+          {dateRange && (
+            <Button
+              size="small"
+              onClick={() => {
+                setDateRange(null);
+                fetchDetail(null);
+              }}
+              style={{ borderRadius: 6 }}
+            >
+              Reset to 30 Days
+            </Button>
+          )}
+        </Space>
+      </div>
 
       {/* Stats Cards Row */}
       <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
