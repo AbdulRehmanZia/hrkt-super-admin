@@ -72,14 +72,16 @@ Use the following seeded credentials to sign in to the Super Admin panel:
 
 ## Assumptions Made
 
+- **Token Storage & Security**: For local/development simplicity, JWT auth tokens are persisted in `localStorage`. In a production deployment, tokens would be stored in `httpOnly`, `Secure`, `SameSite` cookies to mitigate XSS exposure risks.
 - **Revenue Definition Consistency**: The revenue metric labeled **"Lifetime Revenue (PKR)"** across the Facilities Directory list table, CSV export file, and Facility Detail summary card explicitly represents **Lifetime Revenue** (the sum of `amountPaid` across all historical bookings for that facility).
-- **Billing Rate Configuration**: `per_court_fee` (PKR 1,500) and `per_booking_fee` (PKR 50) are configured as global platform billing rates in `billing.config.ts`, while `monthlyBaseFee` is tied to the selected subscription plan (`starter`: 10k PKR, `pro`: 15k PKR, `enterprise`: 25k PKR).
+- **Billing Rate Configuration**: `per_court_fee` (PKR 1,500) and `per_booking_fee` (PKR 20) are configured as global platform billing rates in `billing.config.ts`, while `monthlyBaseFee` is tied to the selected subscription plan (`starter`: 10k PKR, `pro`: 15k PKR, `enterprise`: 25k PKR).
 - **Active Customer Definition**: Defined explicitly as `customer.status === 'active'`. Inactive or archived customer profiles are excluded from tenant metrics and dashboard aggregation queries.
 - **Timezone Strategy**: All timestamps (`createdAt`, `startTime`, `dueDate`, `lastReminderSentAt`) are stored strictly in **UTC** in MongoDB and formatted in local `Asia/Karachi` (`en-PK`) format on the frontend.
 - **Completed Booking Status for Dues**: Per-booking fee calculation includes strictly bookings with `status: 'completed'`.
 
 ## What I'd Do With 2 More Days
 
+- **Enhanced Audit Log Telemetry**: Upgrade the Audit Log system to include full HTTP request and response tracing (recording client IP address, request method & path, headers, request body payload, response status code, and latency) for deep technical debugging.
 - **Platform Dashboard Date-Range Picker**: Add a custom date-range picker on the Platform Dashboard for multi-period platform-wide revenue analysis.
 - **Admin Impersonation**: Build a secure JWT impersonation token switcher allowing super admins to view the platform from any facility admin's perspective for debugging.
 - **Granular Notifications**: Implement real-time WebSockets for overdue platform invoice alerts and automated email notifications for payment reminders.

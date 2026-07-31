@@ -90,17 +90,17 @@ describe('InvoicesService — Billing Calculator Formula', () => {
       });
 
       mockBookingModel.countDocuments.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(100), // 100 completed bookings * 50 = 5000
+        exec: jest.fn().mockResolvedValue(100), // 100 completed bookings * 20 = 2000
       });
 
       const breakdown = await service.getBreakdown(mockInvoiceId.toString());
 
-      // Expected: 15000 (base) + 6000 (courts) + 5000 (bookings) = 26000
+      // Expected: 15000 (base) + 6000 (courts) + 2000 (bookings) = 23000
       expect(breakdown.itemized.monthlyBaseFee.amount).toBe(15000);
       expect(breakdown.itemized.courtUsage.amount).toBe(6000);
       expect(breakdown.itemized.bookingUsage.bookingsCount).toBe(100);
-      expect(breakdown.itemized.bookingUsage.amount).toBe(5000);
-      expect(breakdown.itemized.totalCalculated).toBe(26000);
+      expect(breakdown.itemized.bookingUsage.amount).toBe(2000);
+      expect(breakdown.itemized.totalCalculated).toBe(23000);
     });
 
     it('should filter per-booking count strictly by completed status and handle 0-bookings edge case', async () => {

@@ -14,5 +14,5 @@ export const PLAN_BASE_FEES: Record<string, number> = {
 
 export const BILLING_RATES = {
   PER_COURT_FEE: 1500,   // PKR 1,500 per court / month
-  PER_BOOKING_FEE: 50,   // PKR 50 per completed booking
+  PER_BOOKING_FEE: 20,   // PKR 20 per completed booking (matching spec worked example)
 };
