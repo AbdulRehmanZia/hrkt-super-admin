@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, Table, Button, Space, Card, Input, Select } from 'antd';
+import { Typography, Table, Button, Space, Card, Input, Select, message } from 'antd';
 import {
   PlusOutlined,
   SearchOutlined,
   EyeOutlined,
   EditOutlined,
   ClearOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -218,6 +219,63 @@ export const FacilitiesListPage: React.FC = () => {
     },
   ];
 
+  const handleExportCSV = () => {
+    if (!data || data.length === 0) {
+      message.warning('No facilities data available to export');
+      return;
+    }
+
+    const headers = [
+      'Facility ID',
+      'Facility Name',
+      'City',
+      'Status',
+      'Active Courts',
+      'Court Limit',
+      'Active Customers',
+      'Subscription Plan',
+      'Subscription Status',
+      'Total Revenue (PKR)',
+      'Lifetime Bookings',
+      'Last Booking Date',
+      'Onboarded Date',
+    ];
+
+    const escapeCSV = (val: any) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const rows = data.map((item) => [
+      escapeCSV(item._id),
+      escapeCSV(item.name),
+      escapeCSV(item.city),
+      escapeCSV(item.status),
+      escapeCSV(item.courtCount),
+      escapeCSV(item.courtLimit),
+      escapeCSV(item.activeCustomers),
+      escapeCSV(item.subscriptionPlan),
+      escapeCSV(item.subscriptionStatus),
+      escapeCSV(item.totalRevenue),
+      escapeCSV(item.lifetimeBookings),
+      escapeCSV(item.lastBookingDate ? new Date(item.lastBookingDate).toLocaleDateString('en-PK') : 'No bookings yet'),
+      escapeCSV(new Date(item.createdAt).toLocaleDateString('en-PK')),
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `facilities_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    message.success(`Exported ${data.length} facilities to CSV successfully!`);
+  };
+
   return (
     <div style={{ maxWidth: 1280, margin: '0 auto' }}>
       <div
@@ -236,15 +294,23 @@ export const FacilitiesListPage: React.FC = () => {
             Manage onboarding, subscription status, and tenant performance
           </Text>
         </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          size="large"
-          onClick={() => setIsModalOpen(true)}
-          style={{ backgroundColor: '#00C27A', borderColor: '#00C27A', height: 44, borderRadius: 10, fontWeight: 600 }}
-        >
-          Add Facility
-        </Button>
+        <Space wrap>
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={handleExportCSV}
+            style={{ borderRadius: 8, height: 36, fontWeight: 500, padding: '0 14px', fontSize: 13 }}
+          >
+            Export CSV
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setIsModalOpen(true)}
+            style={{ backgroundColor: '#00C27A', borderColor: '#00C27A', height: 36, borderRadius: 8, fontWeight: 500, padding: '0 14px', fontSize: 13 }}
+          >
+            Add Facility
+          </Button>
+        </Space>
       </div>
 
       {/* Top Filter Bar Layered Surface */}
