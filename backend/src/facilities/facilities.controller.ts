@@ -34,6 +34,7 @@ export class FacilitiesController {
     @Query('status') status?: string,
     @Query('subscriptionStatus') subscriptionStatus?: string,
     @Query('search') search?: string,
+    @Query('sortBy') sortBy?: string,
   ) {
     return this.facilitiesService.findAll({
       page: page ? parseInt(page, 10) : 1,
@@ -41,6 +42,7 @@ export class FacilitiesController {
       status,
       subscriptionStatus,
       search,
+      sortBy,
     });
   }
 

@@ -452,6 +452,7 @@ export class FacilitiesService {
     status?: string;
     subscriptionStatus?: string;
     search?: string;
+    sortBy?: string;
   }) {
     const page = query.page || 1;
     const limit = query.limit || 10;
@@ -536,7 +537,18 @@ export class FacilitiesService {
       });
     }
 
-    pipeline.push({ $sort: { name: 1 } });
+    let sortStage: any = { name: 1 };
+    if (query.sortBy === 'lifetimeBookings_desc' || query.sortBy === 'lifetimeBookings') {
+      sortStage = { lifetimeBookings: -1, name: 1 };
+    } else if (query.sortBy === 'lastBookingDate_desc' || query.sortBy === 'lastBookingDate') {
+      sortStage = { lastBookingDate: -1, name: 1 };
+    } else if (query.sortBy === 'revenue_desc' || query.sortBy === 'totalRevenue') {
+      sortStage = { totalRevenue: -1, name: 1 };
+    } else if (query.sortBy === 'name_asc' || query.sortBy === 'name') {
+      sortStage = { name: 1 };
+    }
+
+    pipeline.push({ $sort: sortStage });
 
     const countPipeline = [...pipeline, { $count: 'total' }];
     const countResult = await this.facilityModel.aggregate(countPipeline).exec();

@@ -76,13 +76,14 @@ export const FacilitiesListPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<FacilityEditTarget | null>(null);
 
-  const fetchFacilities = async (p: number, s?: string, st?: string, sub?: string) => {
+  const fetchFacilities = async (p: number, s?: string, st?: string, sub?: string, sb?: string) => {
     setLoading(true);
     try {
       let path = `/facilities?page=${p}&limit=${limit}`;
       if (s) path += `&search=${encodeURIComponent(s)}`;
       if (st) path += `&status=${st}`;
       if (sub) path += `&subscriptionStatus=${sub}`;
+      if (sb) path += `&sortBy=${sb}`;
       const res = await api.get<FacilitiesResponse>(path, token!);
       setData(res.data);
       setTotal(res.meta.total);
@@ -94,23 +95,8 @@ export const FacilitiesListPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchFacilities(page, search, statusFilter, subStatusFilter);
-  }, [page, search, statusFilter, subStatusFilter]);
-
-  const sortedData = React.useMemo(() => {
-    if (!sortBy) return data;
-    const sorted = [...data];
-    if (sortBy === 'revenue_desc') {
-      return sorted.sort((a, b) => b.totalRevenue - a.totalRevenue);
-    } else if (sortBy === 'revenue_asc') {
-      return sorted.sort((a, b) => a.totalRevenue - b.totalRevenue);
-    } else if (sortBy === 'bookings_desc') {
-      return sorted.sort((a, b) => b.lifetimeBookings - a.lifetimeBookings);
-    } else if (sortBy === 'name_asc') {
-      return sorted.sort((a, b) => a.name.localeCompare(b.name));
-    }
-    return sorted;
-  }, [data, sortBy]);
+    fetchFacilities(page, search, statusFilter, subStatusFilter, sortBy);
+  }, [page, search, statusFilter, subStatusFilter, sortBy]);
 
   const columns = [
     {
@@ -170,6 +156,26 @@ export const FacilitiesListPage: React.FC = () => {
       key: 'lifetimeBookings',
       align: 'center' as const,
       width: 80,
+    },
+    {
+      title: 'Last Booking Date',
+      dataIndex: 'lastBookingDate',
+      key: 'lastBookingDate',
+      width: 140,
+      render: (val: string | null) =>
+        val ? (
+          <span style={{ color: '#4B5563', whiteSpace: 'nowrap' }}>
+            {new Date(val).toLocaleDateString('en-PK', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            })}
+          </span>
+        ) : (
+          <Text type="secondary" style={{ fontStyle: 'italic', color: '#9CA3AF', whiteSpace: 'nowrap' }}>
+            No bookings yet
+          </Text>
+        ),
     },
     {
       title: 'Action',
@@ -286,13 +292,16 @@ export const FacilitiesListPage: React.FC = () => {
           <Select
             placeholder="Sort by"
             value={sortBy}
-            onChange={(val) => setSortBy(val)}
+            onChange={(val) => {
+              setSortBy(val);
+              setPage(1);
+            }}
             allowClear
-            style={{ width: 190, height: 40 }}
+            style={{ width: 210, height: 40 }}
             options={[
+              { value: 'lifetimeBookings_desc', label: 'Sort: Most Bookings' },
+              { value: 'lastBookingDate_desc', label: 'Sort: Last Booking Date' },
               { value: 'revenue_desc', label: 'Sort: Highest Revenue' },
-              { value: 'revenue_asc', label: 'Sort: Lowest Revenue' },
-              { value: 'bookings_desc', label: 'Sort: Most Bookings' },
               { value: 'name_asc', label: 'Sort: Name (A-Z)' },
             ]}
           />
@@ -317,7 +326,7 @@ export const FacilitiesListPage: React.FC = () => {
       {/* Table Card */}
       <Card className="hrkt-card" bodyStyle={{ padding: 0 }} style={{ overflow: 'hidden' }}>
         <Table
-          dataSource={sortedData}
+          dataSource={data}
           columns={columns}
           rowKey="_id"
           loading={loading}
