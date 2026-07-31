@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { FacilitiesModule } from './facilities/facilities.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     FacilitiesModule,
     DashboardModule,
     InvoicesModule,
+    AuditLogsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

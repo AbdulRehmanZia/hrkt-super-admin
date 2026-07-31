@@ -7,6 +7,7 @@ import {
   LogoutOutlined,
   UserOutlined,
   MenuOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -38,6 +39,11 @@ export const MainLayout: React.FC = () => {
       key: '/invoices',
       icon: <DollarOutlined />,
       label: 'Billing & Invoices',
+    },
+    {
+      key: '/audit-logs',
+      icon: <HistoryOutlined />,
+      label: 'Audit Log',
     },
   ];
 
