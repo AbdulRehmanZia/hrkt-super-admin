@@ -39,6 +39,7 @@ import {
   PauseCircleOutlined,
   PlayCircleOutlined,
   HistoryOutlined,
+  TagOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -353,7 +354,7 @@ export const FacilityDetailPage: React.FC = () => {
     );
   }
 
-  const { facility, courts, usersByRole, subscription, bookingRules, auditLogs, paymentBreakdown, stats } = detail;
+  const { facility, courts, usersByRole, subscription, bookingRules, discounts, auditLogs, paymentBreakdown, stats } = detail;
   const adminUser = usersByRole.facility_admin[0];
 
   const bookingColumns = [
@@ -691,7 +692,7 @@ export const FacilityDetailPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* VIEW-ONLY P0 SECTIONS ROW 2: Booking Rules & Audit Logs */}
+      {/* VIEW-ONLY P0 SECTIONS ROW 2: Booking Rules & Discounts Breakdown */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         {/* Booking Rules Summary */}
         <Col xs={24} lg={12}>
@@ -719,8 +720,66 @@ export const FacilityDetailPage: React.FC = () => {
           </Card>
         </Col>
 
-        {/* Audit Log Trail (P1 Control Requirement) */}
+        {/* Discounts Breakdown (P0 Requirement) */}
         <Col xs={24} lg={12}>
+          <Card
+            title={
+              <Space>
+                <TagOutlined style={{ color: '#00C27A' }} />
+                <span>Discounts Breakdown</span>
+                <Badge
+                  count={`${(discounts || []).filter((d) => d.isActive).length}/${(discounts || []).length} Active`}
+                  style={{ backgroundColor: '#00C27A' }}
+                />
+              </Space>
+            }
+          >
+            {!discounts || discounts.length === 0 ? (
+              <Text type="secondary">No discounts configured for this facility.</Text>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {discounts.map((d) => (
+                  <div
+                    key={d._id || d.name}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px 12px',
+                      background: '#fafafa',
+                      borderRadius: 6,
+                      border: '1px solid #f0f0f0',
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Text strong style={{ color: '#111827' }}>{d.name}</Text>
+                        <Tag color={d.isActive ? 'green' : 'default'}>
+                          {d.isActive ? 'ACTIVE' : 'INACTIVE'}
+                        </Tag>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                        Type: <span style={{ textTransform: 'capitalize', fontWeight: 500 }}>{d.type.replace('_', ' ')}</span> · Value: {d.type === 'percentage' ? `${d.value}% OFF` : d.type === 'fixed' ? `PKR ${d.value.toLocaleString()} OFF` : `${d.value}% OFF`}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <Text strong style={{ color: '#00C27A', fontSize: 14 }}>
+                        {d.timesUsed} Uses
+                      </Text>
+                      <div style={{ fontSize: 11, color: '#9CA3AF' }}>Redemptions</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      {/* VIEW-ONLY SECTIONS ROW 3: Audit Logs */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        {/* Audit Log Trail (P1 Control Requirement) */}
+        <Col xs={24}>
           <Card
             title={
               <Space>
