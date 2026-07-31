@@ -124,7 +124,7 @@ interface FacilityDetailResponse {
     cancelledBookings: number;
     cancellationRate: number;
     activeCustomers: number;
-    sourceBreakdown: { web: number; portal: number; bot: number };
+    sourceBreakdown: Record<string, { count: number; revenue: number } | number>;
   };
 }
 
@@ -692,8 +692,71 @@ export const FacilityDetailPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* VIEW-ONLY P0 SECTIONS ROW 2: Booking Rules & Discounts Breakdown */}
+      {/* VIEW-ONLY P0 SECTIONS ROW 2: Source Breakdown & Booking Rules */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        {/* Bookings Breakdown by Source Channel (Counts & Revenue) */}
+        <Col xs={24} lg={12}>
+          <Card
+            title={
+              <Space>
+                <GlobalOutlined style={{ color: '#00C27A' }} />
+                <span>Bookings Breakdown by Source Channel</span>
+              </Space>
+            }
+            bodyStyle={{ minHeight: 280 }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
+              {(() => {
+                const webObj = typeof stats.sourceBreakdown?.web === 'object' ? stats.sourceBreakdown.web : { count: Number(stats.sourceBreakdown?.web || 0), revenue: 0 };
+                const portalObj = typeof stats.sourceBreakdown?.portal === 'object' ? stats.sourceBreakdown.portal : { count: Number(stats.sourceBreakdown?.portal || 0), revenue: 0 };
+                const botObj = typeof stats.sourceBreakdown?.bot === 'object' ? stats.sourceBreakdown.bot : { count: Number(stats.sourceBreakdown?.bot || 0), revenue: 0 };
+                return (
+                  <>
+                    <div style={{ background: '#fafafa', padding: 12, borderRadius: 8, border: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <GlobalOutlined style={{ color: '#00C27A' }} />
+                          <Text strong style={{ color: '#111827' }}>WEB WIDGET</Text>
+                        </div>
+                        <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>{webObj.count} Bookings</div>
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>
+                        PKR {webObj.revenue.toLocaleString()}
+                      </div>
+                    </div>
+
+                    <div style={{ background: '#fafafa', padding: 12, borderRadius: 8, border: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <MobileOutlined style={{ color: '#2563eb' }} />
+                          <Text strong style={{ color: '#111827' }}>CUSTOMER PORTAL</Text>
+                        </div>
+                        <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>{portalObj.count} Bookings</div>
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>
+                        PKR {portalObj.revenue.toLocaleString()}
+                      </div>
+                    </div>
+
+                    <div style={{ background: '#fafafa', padding: 12, borderRadius: 8, border: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <RobotOutlined style={{ color: '#f59e0b' }} />
+                          <Text strong style={{ color: '#111827' }}>WHATSAPP / AI BOT</Text>
+                        </div>
+                        <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>{botObj.count} Bookings</div>
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: '#111827' }}>
+                        PKR {botObj.revenue.toLocaleString()}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </Card>
+        </Col>
+
         {/* Booking Rules Summary */}
         <Col xs={24} lg={12}>
           <Card
@@ -703,6 +766,7 @@ export const FacilityDetailPage: React.FC = () => {
                 <span>Booking Rules Configuration</span>
               </Space>
             }
+            bodyStyle={{ minHeight: 280 }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {bookingRules.map((rule) => (
@@ -719,7 +783,10 @@ export const FacilityDetailPage: React.FC = () => {
             </div>
           </Card>
         </Col>
+      </Row>
 
+      {/* VIEW-ONLY P0 SECTIONS ROW 3: Discounts & Audit Logs */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         {/* Discounts Breakdown (P0 Requirement) */}
         <Col xs={24} lg={12}>
           <Card
@@ -733,6 +800,7 @@ export const FacilityDetailPage: React.FC = () => {
                 />
               </Space>
             }
+            bodyStyle={{ minHeight: 280 }}
           >
             {!discounts || discounts.length === 0 ? (
               <Text type="secondary">No discounts configured for this facility.</Text>
@@ -774,12 +842,9 @@ export const FacilityDetailPage: React.FC = () => {
             )}
           </Card>
         </Col>
-      </Row>
 
-      {/* VIEW-ONLY SECTIONS ROW 3: Audit Logs */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         {/* Audit Log Trail (P1 Control Requirement) */}
-        <Col xs={24}>
+        <Col xs={24} lg={12}>
           <Card
             title={
               <Space>
@@ -787,6 +852,7 @@ export const FacilityDetailPage: React.FC = () => {
                 <span>Super Admin Audit Log Trail</span>
               </Space>
             }
+            bodyStyle={{ minHeight: 280 }}
           >
             {!auditLogs || auditLogs.length === 0 ? (
               <Text type="secondary">No administrative actions logged for this facility yet.</Text>

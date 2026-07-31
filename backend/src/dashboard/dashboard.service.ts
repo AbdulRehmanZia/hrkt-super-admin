@@ -71,7 +71,32 @@ export class DashboardService {
       }
     });
 
-    // 5. Month-over-Month Revenue Trend (Last 6 Months)
+    // 5. Platform-wide Bookings Payment Status Breakdown (fully_paid, partially_paid, unpaid)
+    const paymentBreakdownResult = await this.bookingModel.aggregate([
+      {
+        $group: {
+          _id: '$paymentStatus',
+          count: { $sum: 1 },
+          revenue: { $sum: '$amountPaid' },
+        },
+      },
+    ]).exec();
+
+    const paymentBreakdown = {
+      fully_paid: { count: 0, revenue: 0 },
+      partially_paid: { count: 0, revenue: 0 },
+      unpaid: { count: 0, revenue: 0 },
+    };
+    paymentBreakdownResult.forEach((item) => {
+      if (item._id && paymentBreakdown.hasOwnProperty(item._id)) {
+        paymentBreakdown[item._id as keyof typeof paymentBreakdown] = {
+          count: item.count,
+          revenue: item.revenue || 0,
+        };
+      }
+    });
+
+    // 6. Month-over-Month Revenue Trend (Last 6 Months)
     const monthlyRevenueResult = await this.bookingModel.aggregate([
       {
         $group: {
@@ -96,7 +121,7 @@ export class DashboardService {
       };
     });
 
-    // 6. Booking-Rule Adoption Metric (CRITICAL SPEC METRIC)
+    // 7. Booking-Rule Adoption Metric (CRITICAL SPEC METRIC)
     // Count of facilities that have each rule key enabled
     const ruleKeys = [
       'cash_only',
@@ -120,7 +145,7 @@ export class DashboardService {
 
     const ruleAdoption = await Promise.all(ruleAdoptionPromises);
 
-    // 7. Discount Type Adoption Metric
+    // 8. Discount Type Adoption Metric
     const discountTypesResult = await this.discountModel.aggregate([
       {
         $group: {
@@ -150,6 +175,7 @@ export class DashboardService {
         totalRevenueAllTime,
       },
       sourceBreakdown,
+      paymentBreakdown,
       revenueTrend,
       ruleAdoption,
       discountAdoption,

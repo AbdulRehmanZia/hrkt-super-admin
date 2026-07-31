@@ -121,12 +121,15 @@ export const FacilitiesListPage: React.FC = () => {
       render: (status: string) => getStatusBadge(status),
     },
     {
-      title: 'Courts',
-      dataIndex: 'courtCount',
-      key: 'courtCount',
+      title: 'Courts (used / limit)',
+      key: 'courts',
       align: 'center' as const,
-      width: 65,
-      render: (val: number) => <Text strong style={{ color: '#111827' }}>{val}</Text>,
+      width: 110,
+      render: (_: any, record: FacilityRow) => (
+        <Text strong style={{ color: '#111827' }}>
+          {record.courtCount} / {record.courtLimit}
+        </Text>
+      ),
     },
     {
       title: 'Customers',

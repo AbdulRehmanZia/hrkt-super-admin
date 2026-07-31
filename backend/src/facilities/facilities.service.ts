@@ -196,7 +196,7 @@ export class FacilitiesService {
     const rev30dResult = await this.bookingModel
       .aggregate([
         { $match: { facilityId, startTime: { $gte: thirtyDaysAgo } } },
-        { $group: { _id: null, total: { $sum: '$amountPaid' } } },
+        { $group: { _id: null, total: { $sum: '$amountPaid' }, totalBookings: { $sum: 1 } } },
       ])
       .exec();
 
@@ -218,14 +218,27 @@ export class FacilitiesService {
     const sourceResult = await this.bookingModel
       .aggregate([
         { $match: { facilityId } },
-        { $group: { _id: '$source', count: { $sum: 1 } } },
+        {
+          $group: {
+            _id: '$source',
+            count: { $sum: 1 },
+            revenue: { $sum: '$amountPaid' },
+          },
+        },
       ])
       .exec();
 
-    const sourceBreakdown = { web: 0, portal: 0, bot: 0 };
+    const sourceBreakdown = {
+      web: { count: 0, revenue: 0 },
+      portal: { count: 0, revenue: 0 },
+      bot: { count: 0, revenue: 0 },
+    };
     sourceResult.forEach((item) => {
       if (item._id && sourceBreakdown.hasOwnProperty(item._id)) {
-        sourceBreakdown[item._id as keyof typeof sourceBreakdown] = item.count;
+        sourceBreakdown[item._id as keyof typeof sourceBreakdown] = {
+          count: item.count,
+          revenue: item.revenue || 0,
+        };
       }
     });
 
@@ -241,6 +254,7 @@ export class FacilitiesService {
       paymentBreakdown,
       stats: {
         revenue30Days: rev30dResult.length > 0 ? rev30dResult[0].total : 0,
+        bookings30Days: rev30dResult.length > 0 ? rev30dResult[0].totalBookings : 0,
         totalRevenueAllTime: totalRevResult.length > 0 ? totalRevResult[0].total : 0,
         totalBookings,
         cancelledBookings,

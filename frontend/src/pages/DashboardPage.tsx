@@ -45,6 +45,11 @@ interface DashboardStats {
     portal: number;
     bot: number;
   };
+  paymentBreakdown?: {
+    fully_paid: { count: number; revenue: number };
+    partially_paid: { count: number; revenue: number };
+    unpaid: { count: number; revenue: number };
+  };
   revenueTrend: Array<{
     month: string;
     revenue: number;
@@ -416,6 +421,61 @@ export const DashboardPage: React.FC = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Platform Payment Status Breakdown (Item 5c) */}
+      {stats.paymentBreakdown && (
+        <Row gutter={[20, 20]} style={{ marginTop: 20 }}>
+          <Col xs={24}>
+            <Card
+              className="hrkt-card"
+              title={
+                <Space>
+                  <DollarOutlined style={{ color: '#00C27A', fontSize: 18 }} />
+                  <span style={{ fontSize: 16, fontWeight: 600, color: '#0F172A' }}>Platform-Wide Bookings by Payment Status</span>
+                </Space>
+              }
+            >
+              <Row gutter={[16, 16]}>
+                <Col xs={24} md={8}>
+                  <div style={{ background: '#F6FFED', border: '1px solid #B7EB8F', padding: 16, borderRadius: 10 }}>
+                    <Text strong style={{ color: '#389E0D', fontSize: 13 }}>FULLY PAID BOOKINGS</Text>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#111827', marginTop: 4 }}>
+                      {stats.paymentBreakdown.fully_paid.count.toLocaleString()} Bookings
+                    </div>
+                    <Text style={{ fontSize: 13, color: '#52C41A', fontWeight: 600 }}>
+                      PKR {stats.paymentBreakdown.fully_paid.revenue.toLocaleString()}
+                    </Text>
+                  </div>
+                </Col>
+
+                <Col xs={24} md={8}>
+                  <div style={{ background: '#FFFBE6', border: '1px solid #FFE58F', padding: 16, borderRadius: 10 }}>
+                    <Text strong style={{ color: '#D46B08', fontSize: 13 }}>PARTIALLY PAID BOOKINGS</Text>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#111827', marginTop: 4 }}>
+                      {stats.paymentBreakdown.partially_paid.count.toLocaleString()} Bookings
+                    </div>
+                    <Text style={{ fontSize: 13, color: '#FA8C16', fontWeight: 600 }}>
+                      PKR {stats.paymentBreakdown.partially_paid.revenue.toLocaleString()}
+                    </Text>
+                  </div>
+                </Col>
+
+                <Col xs={24} md={8}>
+                  <div style={{ background: '#FFF2F0', border: '1px solid #FFCCC7', padding: 16, borderRadius: 10 }}>
+                    <Text strong style={{ color: '#CF1322', fontSize: 13 }}>UNPAID / OUTSTANDING</Text>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: '#111827', marginTop: 4 }}>
+                      {stats.paymentBreakdown.unpaid.count.toLocaleString()} Bookings
+                    </div>
+                    <Text style={{ fontSize: 13, color: '#FF4D4F', fontWeight: 600 }}>
+                      PKR {stats.paymentBreakdown.unpaid.revenue.toLocaleString()}
+                    </Text>
+                  </div>
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+        </Row>
+      )}
     </div>
   );
 };
