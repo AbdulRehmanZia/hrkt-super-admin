@@ -58,7 +58,7 @@ export class FacilitiesService {
     @InjectModel(Discount.name) private discountModel: Model<DiscountDocument>,
     @InjectModel(BookingRule.name) private bookingRuleModel: Model<BookingRuleDocument>,
     @InjectModel(AuditLog.name) private auditLogModel: Model<AuditLogDocument>,
-  ) {}
+  ) { }
 
   async create(dto: CreateFacilityDto) {
     const cleanEmail = dto.adminEmail.toLowerCase().trim();
@@ -139,17 +139,18 @@ export class FacilitiesService {
       throw new NotFoundException('Facility not found');
     }
 
-    const courts = await this.courtModel.find({ facilityId }).exec();
+    const courts = await this.courtModel.find({ facilityId }).limit(100).exec();
     const users = await this.userModel
       .find({ facilityId }, 'name email role status createdAt')
+      .limit(100)
       .exec();
     const subscription = await this.subscriptionModel.findOne({ facilityId }).exec();
     const latestInvoice = await this.invoiceModel
       .findOne({ facilityId })
       .sort({ periodMonth: -1 })
       .exec();
-    const bookingRules = await this.bookingRuleModel.find({ facilityId }).exec();
-    const discounts = await this.discountModel.find({ facilityId }).exec();
+    const bookingRules = await this.bookingRuleModel.find({ facilityId }).limit(100).exec();
+    const discounts = await this.discountModel.find({ facilityId }).limit(100).exec();
     const auditLogs = await this.auditLogModel.find({ facilityId }).sort({ createdAt: -1 }).limit(10).exec();
 
     // Group Users by Role (view-only requirement)
@@ -256,6 +257,14 @@ export class FacilitiesService {
       }
     });
 
+    // Per-facility averaged metrics for selected date window
+    const windowDays = Math.max(1, Math.ceil((windowEnd.getTime() - windowStart.getTime()) / (1000 * 60 * 60 * 24)));
+    const bookingsInWindow = rev30dResult.length > 0 ? rev30dResult[0].totalBookings : 0;
+    const revInWindow = rev30dResult.length > 0 ? rev30dResult[0].total : 0;
+
+    const avgDailyBookings = Math.round((bookingsInWindow / windowDays) * 10) / 10;
+    const avgRevenuePerBooking = bookingsInWindow > 0 ? Math.round(revInWindow / bookingsInWindow) : 0;
+
     return {
       facility,
       courts,
@@ -275,6 +284,8 @@ export class FacilitiesService {
         cancellationRate:
           totalBookings > 0 ? Math.round((cancelledBookings / totalBookings) * 100) : 0,
         activeCustomers,
+        avgDailyBookings,
+        avgRevenuePerBooking,
         sourceBreakdown,
       },
     };
@@ -532,9 +543,19 @@ export class FacilitiesService {
       {
         $lookup: {
           from: 'bookings',
-          localField: '_id',
-          foreignField: 'facilityId',
-          as: 'bookings',
+          let: { fid: '$_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$facilityId', '$$fid'] } } },
+            {
+              $group: {
+                _id: null,
+                totalRevenue: { $sum: '$amountPaid' },
+                lifetimeBookings: { $sum: 1 },
+                lastBookingDate: { $max: '$startTime' },
+              },
+            },
+          ],
+          as: 'bookingStats',
         },
       },
       {
@@ -552,9 +573,15 @@ export class FacilitiesService {
           subscriptionPlan: {
             $ifNull: [{ $arrayElemAt: ['$subscription.plan', 0] }, 'none'],
           },
-          totalRevenue: { $sum: '$bookings.amountPaid' },
-          lifetimeBookings: { $size: '$bookings' },
-          lastBookingDate: { $max: '$bookings.startTime' },
+          totalRevenue: {
+            $ifNull: [{ $arrayElemAt: ['$bookingStats.totalRevenue', 0] }, 0],
+          },
+          lifetimeBookings: {
+            $ifNull: [{ $arrayElemAt: ['$bookingStats.lifetimeBookings', 0] }, 0],
+          },
+          lastBookingDate: {
+            $arrayElemAt: ['$bookingStats.lastBookingDate', 0],
+          },
         },
       },
     );

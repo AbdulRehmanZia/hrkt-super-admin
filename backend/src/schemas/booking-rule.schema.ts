@@ -22,3 +22,4 @@ export const BookingRuleSchema = SchemaFactory.createForClass(BookingRule);
 
 // Ensure unique rule key per facility
 BookingRuleSchema.index({ facilityId: 1, key: 1 }, { unique: true });
+BookingRuleSchema.index({ key: 1, isEnabled: 1 });

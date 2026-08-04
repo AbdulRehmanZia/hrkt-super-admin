@@ -26,6 +26,7 @@ export class Customer {
     type: String,
     enum: Object.values(CustomerStatus),
     default: CustomerStatus.ACTIVE,
+    index: true,
   })
   status: CustomerStatus;
 }

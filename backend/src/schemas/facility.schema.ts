@@ -21,6 +21,7 @@ export class Facility {
     type: String,
     enum: Object.values(FacilityStatus),
     default: FacilityStatus.ACTIVE,
+    index: true,
   })
   status: FacilityStatus;
 
