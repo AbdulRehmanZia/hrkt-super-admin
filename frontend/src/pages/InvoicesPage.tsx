@@ -254,16 +254,19 @@ export const InvoicesPage: React.FC = () => {
     {
       title: 'Amount Due (PKR)',
       key: 'amountDue',
-      render: (_: any, r: InvoiceRow) => (
-        <div>
-          <Text strong style={{ fontSize: 15, color: '#111827' }}>
-            PKR {r.amountDue.toLocaleString()}
-          </Text>
-          <div style={{ fontSize: 12, color: r.amountPaid >= r.amountDue ? '#15803D' : '#6B7280' }}>
-            Paid: PKR {r.amountPaid.toLocaleString()}
+      render: (_: any, r: InvoiceRow) => {
+        const currentlyDue = Math.max(0, r.amountDue - r.amountPaid);
+        return (
+          <div>
+            <Text strong style={{ fontSize: 15, color: currentlyDue === 0 ? '#15803D' : '#111827' }}>
+              PKR {currentlyDue.toLocaleString()}
+            </Text>
+            <div style={{ fontSize: 12, color: '#6B7280' }}>
+              Total: PKR {r.amountDue.toLocaleString()} · Paid: PKR {r.amountPaid.toLocaleString()}
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: 'Due Date',
@@ -548,14 +551,28 @@ export const InvoicesPage: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ padding: 14, background: '#E8FFF5', border: '1px solid #6EE7B7', borderRadius: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text strong style={{ color: '#065F46' }}>Current Invoice Amount Due:</Text>
-                <Text strong style={{ color: '#00C27A', fontSize: 16 }}>
-                  PKR {breakdownData.itemized.invoiceAmountDue.toLocaleString()}
-                </Text>
-              </div>
-            </div>
+            {(() => {
+              const inv = breakdownData.invoice;
+              const remainingBalance = Math.max(0, inv.amountDue - inv.amountPaid);
+              const isTrial = inv.amountDue === 0;
+              const isPaid = inv.amountPaid >= inv.amountDue && inv.amountDue > 0;
+
+              return (
+                <div style={{ padding: 14, background: isPaid || isTrial ? '#E8FFF5' : '#FEF2F2', border: `1px solid ${isPaid || isTrial ? '#6EE7B7' : '#FCA5A5'}`, borderRadius: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <Text strong style={{ color: isPaid || isTrial ? '#065F46' : '#991B1B' }}>Remaining Balance Due:</Text>
+                      <div style={{ fontSize: 12, color: '#6B7280' }}>
+                        {isTrial ? 'Trial Subscription (PKR 0 Billed)' : `Total: PKR ${inv.amountDue.toLocaleString()} · Paid: PKR ${inv.amountPaid.toLocaleString()}`}
+                      </div>
+                    </div>
+                    <Text strong style={{ color: isPaid || isTrial ? '#00C27A' : '#EF4444', fontSize: 18 }}>
+                      PKR {remainingBalance.toLocaleString()}
+                    </Text>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </Drawer>
