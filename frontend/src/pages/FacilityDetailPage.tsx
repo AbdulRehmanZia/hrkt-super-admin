@@ -128,6 +128,8 @@ interface FacilityDetailResponse {
     cancelledBookings: number;
     cancellationRate: number;
     activeCustomers: number;
+    avgDailyBookings?: number;
+    avgRevenuePerBooking?: number;
     sourceBreakdown: Record<string, { count: number; revenue: number } | number>;
   };
 }
@@ -601,7 +603,7 @@ export const FacilityDetailPage: React.FC = () => {
               prefix={<DollarOutlined style={{ color: '#00C27A' }} />}
             />
             <Text type="secondary" style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4, display: 'block' }}>
-              All-Time: PKR {stats.totalRevenueAllTime.toLocaleString()}
+              All-Time: PKR {stats.totalRevenueAllTime.toLocaleString()} · Avg/Booking: PKR {(stats.avgRevenuePerBooking || 0).toLocaleString()}
             </Text>
           </Card>
         </Col>
@@ -615,7 +617,7 @@ export const FacilityDetailPage: React.FC = () => {
               prefix={<CalendarOutlined style={{ color: '#00C27A' }} />}
             />
             <Text type="secondary" style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4, display: 'block' }}>
-              Cancellation Rate: <strong style={{ color: '#111827' }}>{stats.cancellationRate}%</strong> ({stats.cancelledBookings} cancelled)
+              Cancel Rate: <strong style={{ color: '#111827' }}>{stats.cancellationRate}%</strong> · Avg/Day: <strong style={{ color: '#111827' }}>{stats.avgDailyBookings || 0}</strong>
             </Text>
           </Card>
         </Col>

@@ -30,11 +30,22 @@ export class DashboardService {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // 1. Facility Status Breakdown & Total Count
-    const totalFacilities = await this.facilityModel.countDocuments().exec();
-    const activeFacilities = await this.facilityModel.countDocuments({ status: FacilityStatus.ACTIVE }).exec();
-    const inactiveFacilities = await this.facilityModel.countDocuments({ status: FacilityStatus.INACTIVE }).exec();
-    const suspendedFacilities = await this.facilityModel.countDocuments({ status: FacilityStatus.SUSPENDED }).exec();
+    // 1. Facility Status Breakdown & Total Count (Single IOPS Aggregation)
+    const facilityStatusResult = await this.facilityModel.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]).exec();
+
+    let totalFacilities = 0;
+    let activeFacilities = 0;
+    let inactiveFacilities = 0;
+    let suspendedFacilities = 0;
+
+    facilityStatusResult.forEach((item) => {
+      totalFacilities += item.count;
+      if (item._id === FacilityStatus.ACTIVE) activeFacilities = item.count;
+      if (item._id === FacilityStatus.INACTIVE) inactiveFacilities = item.count;
+      if (item._id === FacilityStatus.SUSPENDED) suspendedFacilities = item.count;
+    });
 
     // 2. Active Customers Total Count (across platform where status === ACTIVE)
     const totalActiveCustomers = await this.customerModel.countDocuments({ status: CustomerStatus.ACTIVE }).exec();
@@ -54,6 +65,16 @@ export class DashboardService {
       { $group: { _id: null, total: { $sum: '$amountPaid' } } },
     ]).exec();
     const totalRevenueAllTime = totalRevenueResult.length > 0 ? totalRevenueResult[0].total : 0;
+
+    // Average Bookings Per Facility Aggregation Pipeline
+    const avgBookingsResult = await this.bookingModel.aggregate([
+      { $group: { _id: '$facilityId', count: { $sum: 1 } } },
+      { $group: { _id: null, avgBookings: { $avg: '$count' } } },
+    ]).exec();
+    const averageBookingsPerFacility =
+      avgBookingsResult.length > 0
+        ? Math.round(avgBookingsResult[0].avgBookings * 10) / 10
+        : 0;
 
     // 4. Booking Source Breakdown (WEB, PORTAL, BOT)
     const sourceBreakdownResult = await this.bookingModel.aggregate([
@@ -96,8 +117,11 @@ export class DashboardService {
       }
     });
 
+    const sixMonthsAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+
     // 6. Month-over-Month Revenue Trend (Last 6 Months)
     const monthlyRevenueResult = await this.bookingModel.aggregate([
+      { $match: { startTime: { $gte: sixMonthsAgo } } },
       {
         $group: {
           _id: {
@@ -130,11 +154,18 @@ export class DashboardService {
       'min_slot_duration',
     ];
 
-    const ruleAdoptionPromises = ruleKeys.map(async (key) => {
-      const enabledCount = await this.bookingRuleModel.countDocuments({
-        key,
-        isEnabled: true,
-      }).exec();
+    const ruleCountsResult = await this.bookingRuleModel.aggregate([
+      { $match: { key: { $in: ruleKeys }, isEnabled: true } },
+      { $group: { _id: '$key', enabledCount: { $sum: 1 } } },
+    ]).exec();
+
+    const ruleCountsMap: Record<string, number> = {};
+    ruleCountsResult.forEach((item) => {
+      if (item._id) ruleCountsMap[item._id] = item.enabledCount;
+    });
+
+    const ruleAdoption = ruleKeys.map((key) => {
+      const enabledCount = ruleCountsMap[key] || 0;
       return {
         key,
         enabledCount,
@@ -142,8 +173,6 @@ export class DashboardService {
         percentage: totalFacilities > 0 ? Math.round((enabledCount / totalFacilities) * 100) : 0,
       };
     });
-
-    const ruleAdoption = await Promise.all(ruleAdoptionPromises);
 
     // 8. Discount Type Adoption Metric
     const discountTypesResult = await this.discountModel.aggregate([
@@ -172,6 +201,7 @@ export class DashboardService {
         revenue30Days,
         bookings30Days,
         totalBookings,
+        averageBookingsPerFacility,
         totalRevenueAllTime,
       },
       sourceBreakdown,

@@ -38,6 +38,7 @@ interface DashboardStats {
     revenue30Days: number;
     bookings30Days: number;
     totalBookings: number;
+    averageBookingsPerFacility?: number;
     totalRevenueAllTime: number;
   };
   sourceBreakdown: {
@@ -254,7 +255,7 @@ export const DashboardPage: React.FC = () => {
               </div>
             </div>
             <Text type="secondary" style={{ fontSize: 12, color: '#94A3B8', marginTop: 8, display: 'block' }}>
-              Total All-Time: {kpis.totalBookings.toLocaleString()}
+              Total: {kpis.totalBookings.toLocaleString()} · Avg/Facility: {kpis.averageBookingsPerFacility || 0}
             </Text>
           </Card>
         </Col>
